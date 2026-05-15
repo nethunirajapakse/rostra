@@ -1,0 +1,45 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.log
+.mvn/
+mvnw
+mvnw.cmd
+HELP.md
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Node / Frontend
+node_modules/
+dist/
+.npm
+.pnp
+.pnp.js
+coverage/
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+application-local.yml
+application-local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Misc
+*.swp
+*.swo
+*~
