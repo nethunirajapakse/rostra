@@ -44,4 +44,4 @@ Each Spring service is then started independently from `services/<name>/`.
 
 ## Status
 
-Day 1 — Infrastructure setup complete.
+Auth service complete.
