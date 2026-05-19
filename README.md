@@ -44,4 +44,3 @@ Each Spring service is then started independently from `services/<name>/`.
 
 ## Status
 
-Auth service complete.
