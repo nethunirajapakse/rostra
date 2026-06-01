@@ -43,4 +43,4 @@ That spins up Postgres, Kafka, Zookeeper, and a Kafka UI (at http://localhost:80
 Each Spring service is then started independently from `services/<name>/`.
 
 ## Status
-Auth and Auction services are complete. 
+Auth service setup complete. 
