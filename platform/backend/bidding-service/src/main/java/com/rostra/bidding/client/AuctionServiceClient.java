@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Component
@@ -41,9 +42,7 @@ public class AuctionServiceClient {
         }
     }
 
-    @SuppressWarnings("unused")
     private AuctionView fetchAuctionFallback(UUID auctionId, Throwable ex) {
-        // Don't fall back on a 404 — that's a real "not found", not a service outage.
         if (ex instanceof AuctionNotFoundException) {
             throw (AuctionNotFoundException) ex;
         }
@@ -51,5 +50,32 @@ public class AuctionServiceClient {
         throw new AuctionServiceUnavailableException(
                 "Auction validation service temporarily unavailable"
         );
+    }
+
+    public AuctionView updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion, String bearerToken) {
+        String body = String.format(
+                "{\"newPrice\":%s,\"expectedVersion\":%d}",
+                newPrice.toPlainString(), expectedVersion
+        );
+        try {
+            return restClient.patch()
+                    .uri("/auctions/{id}/current-price", auctionId)
+                    .header("Authorization", "Bearer " + bearerToken)
+                    .header("Content-Type", "application/json")
+                    .body(body)
+                    .retrieve()
+                    .body(AuctionView.class);
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 409) {
+                // Version mismatch — concurrent bid won the race
+                throw new org.springframework.orm.ObjectOptimisticLockingFailureException(
+                        "Auction current_price update conflicted with concurrent bid", e
+                );
+            }
+            if (e.getStatusCode().value() == 404) {
+                throw new AuctionNotFoundException(auctionId);
+            }
+            throw e;
+        }
     }
 }

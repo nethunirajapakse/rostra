@@ -14,5 +14,6 @@ public record AuctionView(
         BigDecimal minIncrement,
         Instant startsAt,
         Instant endsAt,
-        String status
+        String status,
+        Long version
 ) {}
