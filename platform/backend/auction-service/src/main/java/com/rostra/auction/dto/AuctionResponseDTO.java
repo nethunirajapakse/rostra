@@ -20,7 +20,8 @@ public record AuctionResponseDTO(
         Instant startsAt,
         Instant endsAt,
         AuctionStatus status,
-        Instant createdAt
+        Instant createdAt,
+        Long version
 ) {
     public static AuctionResponseDTO from(Auction a) {
         return new AuctionResponseDTO(
@@ -36,7 +37,8 @@ public record AuctionResponseDTO(
                 a.getStartsAt(),
                 a.getEndsAt(),
                 a.getStatus(),
-                a.getCreatedAt()
+                a.getCreatedAt(),
+                a.getVersion()
         );
     }
 }

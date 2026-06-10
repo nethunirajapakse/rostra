@@ -3,6 +3,7 @@ package com.rostra.auction.controller;
 import com.rostra.auction.dto.AuctionResponseDTO;
 import com.rostra.auction.dto.CreateAuctionRequestDTO;
 import com.rostra.auction.dto.UpdateAuctionRequestDTO;
+import com.rostra.auction.dto.UpdateCurrentPriceRequestDTO;
 import com.rostra.auction.entity.Auction;
 import com.rostra.auction.repository.AuctionSearchCriteria;
 import com.rostra.auction.service.AuctionService;
@@ -71,5 +72,15 @@ public class AuctionController {
     ) {
         Auction cancelled = auctionService.cancel(userId, id);
         return AuctionResponseDTO.from(cancelled);
+    }
+
+    @PatchMapping("/{id}/current-price")
+    public AuctionResponseDTO updateCurrentPrice(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UUID userId,
+            @Valid @RequestBody UpdateCurrentPriceRequestDTO req
+    ) {
+        Auction updated = auctionService.updateCurrentPrice(id, req.newPrice(), req.expectedVersion());
+        return AuctionResponseDTO.from(updated);
     }
 }

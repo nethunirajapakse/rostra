@@ -8,17 +8,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
+import java.math.BigDecimal;
 
 public interface AuctionService {
 
-    /**
-     * Creates a new auction for a given seller.
-     *
-     * @param sellerId the unique identifier of the seller
-     * @param req      the data transfer object containing auction details
-     * @return the saved Auction entity
-     * @throws IllegalArgumentException if the end time is not after the start time
-     */
     Auction create(UUID sellerId, CreateAuctionRequestDTO req);
 
     Auction findById(UUID id);
@@ -28,4 +21,6 @@ public interface AuctionService {
     Auction update(UUID userId, UUID auctionId, UpdateAuctionRequestDTO req);
 
     Auction cancel(UUID userId, UUID auctionId);
+
+    Auction updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion);
 }
