@@ -43,4 +43,4 @@ That spins up Postgres, Kafka, Zookeeper, and a Kafka UI (at http://localhost:80
 Each Spring service is then started independently from `services/<name>/`.
 
 ## Status
-Auth service setup complete. 
+Built four Spring Boot services (auth, auction, bidding, notification) with per-service Postgres databases and Kafka for async communication. Implemented the transactional outbox pattern for reliable event publishing, Resilience4J circuit breakers on synchronous service calls, optimistic locking with retry for concurrent bid handling, and JWT-based cross-service authentication.
