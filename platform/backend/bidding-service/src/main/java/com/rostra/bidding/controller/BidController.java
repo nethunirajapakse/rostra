@@ -25,12 +25,12 @@ public class BidController {
     @PostMapping
     public ResponseEntity<BidResponse> placeBid(
             @AuthenticationPrincipal UUID bidderId,
+            @RequestHeader("Authorization") String authHeader,
             @Valid @RequestBody PlaceBidRequestDTO request
     ) {
-        Bid bid = bidService.placeBid(bidderId, request);
+        String token = authHeader.substring(7);
+        Bid bid = bidService.placeBid(bidderId, request, token);
         BidResponse body = BidResponse.from(bid);
-        return ResponseEntity
-                .created(URI.create("/bids/" + bid.getId()))
-                .body(body);
+        return ResponseEntity.created(URI.create("/bids/" + bid.getId())).body(body);
     }
 }

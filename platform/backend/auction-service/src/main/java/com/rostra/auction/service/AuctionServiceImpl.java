@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -122,6 +123,32 @@ public class AuctionServiceImpl implements AuctionService{
         }
 
         auction.setStatus(AuctionStatus.CANCELLED);
+        return auction;
+    }
+
+    @Override
+    @Transactional
+    public Auction updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new AuctionNotFoundException(auctionId));
+
+        // Manual version check — gives us a controllable response
+        if (!auction.getVersion().equals(expectedVersion)) {
+            throw new IllegalAuctionStateException(
+                    String.format("Auction version mismatch (expected %d, found %d). " +
+                                    "Another bid may have been placed concurrently.",
+                            expectedVersion, auction.getVersion())
+            );
+        }
+
+        if (!AuctionStatus.ACTIVE.equals(auction.getStatus())) {
+            throw new IllegalAuctionStateException(
+                    "Cannot update price of auction in status: " + auction.getStatus()
+            );
+        }
+
+        auction.setCurrentPrice(newPrice);
+        // dirty checking handles the UPDATE; @Version annotation increments version automatically
         return auction;
     }
 }
