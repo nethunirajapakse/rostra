@@ -45,10 +45,11 @@ public class EventConsumer {
             notificationRepository.save(notification);
 
             log.info("Persisted bid-placed notification for user {}", event.bidderId());
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            log.error("Failed to deserialize bid.placed event payload; skipping message: {}", e.getMessage(), e);
         } catch (Exception e) {
             log.error("Failed to process bid.placed event: {}", e.getMessage(), e);
-            // For at-least-once delivery, throwing causes the consumer to retry.
-            // For now we log and swallow to avoid infinite retries on bad messages.
+            throw e;
         }
     }
 
