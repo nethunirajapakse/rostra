@@ -147,6 +147,14 @@ public class AuctionServiceImpl implements AuctionService{
             );
         }
 
+        BigDecimal minRequired = auction.getCurrentPrice().add(auction.getMinIncrement());
+        if (newPrice.compareTo(minRequired) < 0) {
+            throw new IllegalAuctionStateException(
+                    String.format("Bid amount %s is below minimum required %s (current price %s + increment %s)",
+                            newPrice, minRequired, auction.getCurrentPrice(), auction.getMinIncrement())
+            );
+        }
+
         auction.setCurrentPrice(newPrice);
         // dirty checking handles the UPDATE; @Version annotation increments version automatically
         return auction;
