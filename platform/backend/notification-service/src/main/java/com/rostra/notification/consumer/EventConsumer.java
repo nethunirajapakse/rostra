@@ -70,8 +70,11 @@ public class EventConsumer {
             notificationRepository.save(sellerNotification);
 
             log.info("Persisted auction-ended notification for seller {}", event.sellerId());
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            log.error("Failed to deserialize auction.ended event payload; skipping message: {}", e.getMessage(), e);
         } catch (Exception e) {
             log.error("Failed to process auction.ended event: {}", e.getMessage(), e);
+            throw e;
         }
     }
 }
