@@ -16,6 +16,10 @@ import com.rostra.bidding.repository.OutboxRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,45 +54,54 @@ public class BidServiceImpl implements BidService {
 
     @Override
     @Transactional
-    public Bid placeBid(UUID bidderId, PlaceBidRequestDTO request) {
-        // 1. Fetch auction state (sync REST call, protected by circuit breaker)
+    @Retryable(
+            retryFor = ObjectOptimisticLockingFailureException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 50, multiplier = 2)
+    )
+    public Bid placeBid(UUID bidderId, PlaceBidRequestDTO request, String bearerToken) {
+        // 1. Fetch auction state
         AuctionView auction = auctionClient.fetchAuction(request.auctionId());
 
-        // 2. Validate auction is biddable
+        // 2. State + amount validation (as before)
         validateAuctionState(auction);
-
-        // 3. Validate bid amount
         validateBidAmount(request.amount(), auction);
 
-        // 4. Persist Bid
-        Bid bid = new Bid(
+        // 3. Update auction's current_price — may throw ObjectOptimisticLockingFailureException
+        auctionClient.updateCurrentPrice(
                 auction.id(),
-                bidderId,
                 request.amount(),
-                BidStatus.ACCEPTED
+                auction.version(),     // <-- new field on AuctionView
+                bearerToken
         );
+
+        // 4. Persist Bid + OutboxEvent (as before)
+        Bid bid = new Bid(auction.id(), bidderId, request.amount(), BidStatus.ACCEPTED);
         bid = bidRepository.save(bid);
 
-        // 5. Persist OutboxEvent in the same transaction
-        BidPlacedEvent event = new BidPlacedEvent(
-                bid.getId(),
-                bid.getAuctionId(),
-                bid.getBidderId(),
-                bid.getAmount(),
-                bid.getPlacedAt() != null ? bid.getPlacedAt() : Instant.now()
-        );
-        String payload = serializeEvent(event);
-        OutboxEvent outboxRow = new OutboxEvent(
-                bid.getId(),       // aggregate_id = bid id
-                bidPlacedTopic,    // topic = bid.placed
-                payload            // payload = JSON of BidPlacedEvent
-        );
+        BidPlacedEvent event = new BidPlacedEvent(bid.getId(), bid.getAuctionId(),
+                bid.getBidderId(), bid.getAmount(),
+                bid.getPlacedAt() != null ? bid.getPlacedAt() : Instant.now());
+        OutboxEvent outboxRow = new OutboxEvent(bid.getId(), bidPlacedTopic, serializeEvent(event));
         outboxRepository.save(outboxRow);
 
         log.info("Bid {} placed by user {} on auction {} for amount {}",
                 bid.getId(), bidderId, auction.id(), request.amount());
-
         return bid;
+    }
+
+    @Recover
+    public Bid recoverFromOptimisticLockFailure(
+            ObjectOptimisticLockingFailureException ex,
+            UUID bidderId,
+            PlaceBidRequestDTO request,
+            String bearerToken
+    ) {
+        log.warn("Bid placement failed after retries for auction {}: optimistic lock conflict",
+                request.auctionId());
+        throw new InvalidBidException(
+                "Could not place bid — auction state changed too rapidly. Please try again."
+        );
     }
 
     private void validateAuctionState(AuctionView auction) {
