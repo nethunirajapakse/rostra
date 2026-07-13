@@ -53,9 +53,9 @@ public class AuctionServiceClient {
     }
 
     public AuctionView updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion, String bearerToken) {
-        String body = String.format(
-                "{\"newPrice\":%s,\"expectedVersion\":%d}",
-                newPrice.toPlainString(), expectedVersion
+        Object body = java.util.Map.of(
+                "newPrice", newPrice,
+                "expectedVersion", expectedVersion
         );
         try {
             return restClient.patch()
