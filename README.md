@@ -42,5 +42,3 @@ That spins up Postgres, Kafka, Zookeeper, and a Kafka UI (at http://localhost:80
 
 Each Spring service is then started independently from `services/<name>/`.
 
-## Status
-Built four Spring Boot services (auth, auction, bidding, notification) with per-service Postgres databases and Kafka for async communication.
