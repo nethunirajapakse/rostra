@@ -39,6 +39,13 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(OwnAuctionBidException.class)
+    public ResponseEntity<ErrorResponse> handleOwnAuction(OwnAuctionBidException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(
+                Instant.now(), 403, "Forbidden", ex.getMessage(), null
+        ));
+    }
+
     @ExceptionHandler(AuctionNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(AuctionNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(

@@ -33,18 +33,31 @@ public class EventConsumer {
             log.info("Received bid.placed: bidId={}, auctionId={}, amount={}",
                     event.bidId(), event.auctionId(), event.amount());
 
-            // For v1 we don't know the seller's userId without calling auction-service.
-            // We'll persist a placeholder notification for the bidder confirming the bid was received.
-            // (Notifying the seller is a follow-up issue — needs auction lookup or enriched event.)
-            Notification notification = new Notification(
-                    event.bidderId(),
-                    NotificationType.BID_RECEIVED_ON_YOUR_AUCTION,  // generic for v1
-                    String.format("Your bid of %s was placed", event.amount()),
-                    event.auctionId()
-            );
-            notificationRepository.save(notification);
+            // Seller: someone bid on your auction.
+            notificationRepository.save(new Notification(
+                    event.sellerId(),
+                    NotificationType.BID_RECEIVED_ON_YOUR_AUCTION,
+                    String.format("New bid of %s on your auction", event.amount()),
+                    event.auctionId()));
 
-            log.info("Persisted bid-placed notification for user {}", event.bidderId());
+            // Bidder: confirmation of their own bid.
+            notificationRepository.save(new Notification(
+                    event.bidderId(),
+                    NotificationType.BID_PLACED,
+                    String.format("Your bid of %s was placed", event.amount()),
+                    event.auctionId()));
+
+            // Previous leader: you have been outbid.
+            if (event.previousBidderId() != null) {
+                notificationRepository.save(new Notification(
+                        event.previousBidderId(),
+                        NotificationType.OUTBID,
+                        String.format("You were outbid. The new highest bid is %s", event.amount()),
+                        event.auctionId()));
+            }
+
+            log.info("Persisted bid-placed notifications (seller {}, bidder {}, outbid {})",
+                    event.sellerId(), event.bidderId(), event.previousBidderId());
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             log.error("Failed to deserialize bid.placed event payload; skipping message: {}", e.getMessage(), e);
         } catch (Exception e) {
