@@ -11,8 +11,8 @@
 	<groupId>com.rostra</groupId>
 	<artifactId>auth-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>auth-service</name>
+	<description>Rostra auth: JWT cookie sessions, rotating refresh tokens, Redis revocation</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -46,6 +46,20 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+		<!-- Resilience4j: circuit breaker around Redis calls, so a Redis outage fails fast -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.github.resilience4j</groupId>
+			<artifactId>resilience4j-spring-boot3</artifactId>
+			<version>2.2.0</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>
@@ -65,6 +79,18 @@
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- H2 + embedded Redis keep the integration tests free of external services -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.github.codemonstur</groupId>
+			<artifactId>embedded-redis</artifactId>
+			<version>1.4.3</version>
 			<scope>test</scope>
 		</dependency>
 		<!-- JWT (JJWT library by Auth0/jwtk) -->

@@ -1,19 +1,22 @@
 package com.rostra.auth.controller;
 
-import com.rostra.auth.dto.AuthResponseDTO;
-import com.rostra.auth.dto.LoginRequestDTO;
-import com.rostra.auth.dto.RegisterRequestDTO;
+import com.rostra.auth.dto.MessageResponseDTO;
+import com.rostra.auth.dto.SigninRequestDTO;
+import com.rostra.auth.dto.SignupRequestDTO;
+import com.rostra.auth.dto.UserResponseDTO;
+import com.rostra.auth.security.CookieFactory;
 import com.rostra.auth.service.AuthService;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
@@ -21,65 +24,60 @@ import java.util.Arrays;
 public class AuthController {
 
     private final AuthService authService;
+    private final CookieFactory cookieFactory;
 
-    @Value("${app.cookie.secure}")
-    private boolean cookieSecure;
-
-    @Value("${app.cookie.max-age-seconds}")
-    private int cookieMaxAge;
-
-    @PostMapping("/register")
-    public ResponseEntity<AuthResponseDTO> register(
-            @Valid @RequestBody RegisterRequestDTO request,
-            HttpServletResponse response) {
-        return ResponseEntity.ok(authService.register(request, response));
+    @PostMapping("/signup")
+    public ResponseEntity<MessageResponseDTO> signup(@Valid @RequestBody SignupRequestDTO request) {
+        authService.signup(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new MessageResponseDTO("Signup successful"));
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<AuthResponseDTO> login(
-            @Valid @RequestBody LoginRequestDTO request,
-            HttpServletResponse response) {
-        return ResponseEntity.ok(authService.login(request, response));
+    @PostMapping("/signin")
+    public ResponseEntity<MessageResponseDTO> signin(@Valid @RequestBody SigninRequestDTO request) {
+        AuthService.TokenPair tokens = authService.signin(request);
+        return withTokenCookies(tokens, new MessageResponseDTO("Login successful"));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponseDTO> refresh(HttpServletRequest request,
-                                                HttpServletResponse response) {
-        String refreshToken = extractRefreshTokenFromCookie(request);
-        if (refreshToken == null) {
-            return ResponseEntity.status(401).build();
-        }
-
-        AuthResponseDTO auth = authService.refresh(refreshToken);
-        return ResponseEntity.ok(auth);
+    public ResponseEntity<MessageResponseDTO> refresh(
+            @CookieValue(name = CookieFactory.REFRESH_TOKEN_COOKIE, required = false) String refreshTokenCookie) {
+        AuthService.TokenPair tokens = authService.refresh(refreshTokenCookie);
+        return withTokenCookies(tokens, new MessageResponseDTO("Token refreshed"));
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletRequest request,
-                                       HttpServletResponse response) {
-        String refreshToken = extractRefreshTokenFromCookie(request);
-        if (refreshToken != null) {
-            authService.logout(refreshToken);
-        }
-        clearRefreshTokenCookie(response);
-        return ResponseEntity.noContent().build();
+    @PostMapping("/signout")
+    public ResponseEntity<MessageResponseDTO> signout(
+            @CookieValue(name = CookieFactory.ACCESS_TOKEN_COOKIE, required = false) String accessTokenCookie,
+            @CookieValue(name = CookieFactory.REFRESH_TOKEN_COOKIE, required = false) String refreshTokenCookie) {
+
+        authService.signout(accessTokenCookie, refreshTokenCookie);
+
+        HttpHeaders headers = new HttpHeaders();
+        cookieFactory.addExpiredAuthCookies(headers);
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(new MessageResponseDTO("Logout successful"));
     }
 
-    private String extractRefreshTokenFromCookie(HttpServletRequest request) {
-        if (request.getCookies() == null) return null;
-        return Arrays.stream(request.getCookies())
-                .filter(c -> "refresh_token".equals(c.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+    @GetMapping("/me")
+    public ResponseEntity<UserResponseDTO> me(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(authService.getCurrentUser(userId));
     }
 
-    private void clearRefreshTokenCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie("refresh_token", "");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(cookieSecure);
-        cookie.setPath("/auth/refresh");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+    private ResponseEntity<MessageResponseDTO> withTokenCookies(AuthService.TokenPair tokens, MessageResponseDTO body) {
+        HttpHeaders headers = new HttpHeaders();
+        cookieFactory.addAuthCookies(
+                headers,
+                tokens.accessToken().token(),
+                Duration.between(Instant.now(), tokens.accessToken().expiresAt()),
+                tokens.refreshToken().token(),
+                Duration.between(Instant.now(), tokens.refreshToken().expiresAt()));
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(body);
     }
 }

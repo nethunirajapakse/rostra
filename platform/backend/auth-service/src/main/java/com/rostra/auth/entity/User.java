@@ -1,16 +1,21 @@
 package com.rostra.auth.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class User {
 
@@ -18,16 +23,23 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(nullable = false)
+    private String firstName;
+
+    @Column(nullable = false)
+    private String lastName;
+
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+    @Column(nullable = false)
+    private String password;
 
-    @Column(name = "display_name", nullable = false)
-    private String displayName;
-
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = Instant.now();
+    }
 }

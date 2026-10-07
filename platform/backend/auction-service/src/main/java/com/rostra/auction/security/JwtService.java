@@ -7,17 +7,23 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+/**
+ * Verifies access tokens issued by the auth-service. Same shared secret (raw UTF-8 bytes), no call back to auth.
+ * Revocation (signout) is enforced at the gateway; this checks signature, expiry and token type.
+ */
 @Service
 public class JwtService {
 
+    private static final String CLAIM_TYPE = "type";
+    private static final String TYPE_ACCESS = "ACCESS";
+
     private final SecretKey signingKey;
 
-    public JwtService(@Value("${app.jwt.secret}") String base64Secret) {
-        byte[] decoded = Base64.getDecoder().decode(base64Secret);
-        this.signingKey = Keys.hmacShaKeyFor(decoded);
+    public JwtService(@Value("${app.jwt.secret}") String secret) {
+        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public Claims parse(String token) {
@@ -28,10 +34,10 @@ public class JwtService {
                 .getPayload();
     }
 
+    /** Valid signature, not expired, and an ACCESS token (refresh tokens share the key and must not pass). */
     public boolean isValid(String token) {
         try {
-            parse(token);
-            return true;
+            return TYPE_ACCESS.equals(parse(token).get(CLAIM_TYPE, String.class));
         } catch (Exception e) {
             return false;
         }

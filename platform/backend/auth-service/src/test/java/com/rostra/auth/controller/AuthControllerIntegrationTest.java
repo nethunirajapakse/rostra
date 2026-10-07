@@ -1,0 +1,144 @@
+package com.rostra.auth.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rostra.auth.EmbeddedRedisTestBase;
+import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class AuthControllerIntegrationTest extends EmbeddedRedisTestBase {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private Map<String, Object> signupBody(String email, String password) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("firstName", "Test");
+        body.put("lastName", "User");
+        body.put("email", email);
+        body.put("password", password);
+        return body;
+    }
+
+    @Test
+    void signup_thenSignin_thenMe_fullHappyPath() throws Exception {
+        String email = "flow-user@example.com";
+        String password = "Password@123";
+
+        mockMvc.perform(post("/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signupBody(email, password))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.message").value("Signup successful"));
+
+        Map<String, String> signinBody = Map.of("email", email, "password", password);
+        MvcResult signinResult = mockMvc.perform(post("/auth/signin")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signinBody)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Login successful"))
+                .andExpect(cookie().exists("access_token"))
+                .andExpect(cookie().exists("refresh_token"))
+                .andReturn();
+
+        Cookie accessCookie = signinResult.getResponse().getCookie("access_token");
+
+        mockMvc.perform(get("/auth/me").cookie(accessCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.name").value("Test User"));
+    }
+
+    @Test
+    void signup_rejectsDuplicateEmail() throws Exception {
+        String email = "dupe@example.com";
+        Map<String, Object> body = signupBody(email, "Password@123");
+
+        mockMvc.perform(post("/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void signup_rejectsInvalidEmailAndWeakPassword() throws Exception {
+        Map<String, Object> body = signupBody("not-an-email", "weak");
+
+        mockMvc.perform(post("/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void signin_rejectsWrongPassword() throws Exception {
+        String email = "wrongpass@example.com";
+        mockMvc.perform(post("/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signupBody(email, "Password@123"))))
+                .andExpect(status().isCreated());
+
+        Map<String, String> signinBody = Map.of("email", email, "password", "WrongPassword@123");
+        mockMvc.perform(post("/auth/signin")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signinBody)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void me_rejectsRequestWithNoCookie() throws Exception {
+        mockMvc.perform(get("/auth/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void signout_invalidatesAccessTokenImmediately() throws Exception {
+        String email = "signout-user@example.com";
+        String password = "Password@123";
+
+        mockMvc.perform(post("/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signupBody(email, password))))
+                .andExpect(status().isCreated());
+
+        MvcResult signinResult = mockMvc.perform(post("/auth/signin")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", email, "password", password))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie accessCookie = signinResult.getResponse().getCookie("access_token");
+        Cookie refreshCookie = signinResult.getResponse().getCookie("refresh_token");
+
+        mockMvc.perform(post("/auth/signout")
+                        .with(csrf())
+                        .cookie(accessCookie, refreshCookie))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/auth/me").cookie(accessCookie))
+                .andExpect(status().isUnauthorized());
+    }
+}
