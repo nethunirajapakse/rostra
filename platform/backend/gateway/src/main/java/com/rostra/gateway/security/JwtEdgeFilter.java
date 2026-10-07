@@ -14,6 +14,7 @@ import org.springframework.core.Ordered;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -37,6 +38,10 @@ import java.util.Objects;
  * Any client-supplied Authorization header is removed. Services accept Bearer tokens for internal calls
  * (bidding to auction), and a Bearer token sent from outside would skip the denylist check.
  *
+ * WebSocket upgrades (paths under /ws/) are the exception: the gateway completes the upgrade with the browser
+ * before it contacts the backend, so a backend 401 could never reach the client as a clean refusal. They are
+ * therefore refused here with 401 unless the cookie is valid, so an anonymous client never gets a socket.
+ *
  * If Redis is unreachable the denylist check fails open, matching the auth-service, so an outage does not log
  * everyone out. The signature, expiry and type checks still apply.
  */
@@ -45,6 +50,7 @@ public class JwtEdgeFilter implements GlobalFilter, Ordered {
 
     private static final Logger log = LoggerFactory.getLogger(JwtEdgeFilter.class);
 
+    static final String WS_PATH_PREFIX = "/ws/";
     static final String ACCESS_COOKIE = "access_token";
     static final String DENYLIST_KEY_PREFIX = "denylist:";
     private static final String CLAIM_TYPE = "type";
@@ -69,17 +75,24 @@ public class JwtEdgeFilter implements GlobalFilter, Ordered {
         ServerHttpRequest request = exchange.getRequest();
         HttpCookie cookie = request.getCookies().getFirst(ACCESS_COOKIE);
 
+        boolean webSocket = request.getURI().getPath().startsWith(WS_PATH_PREFIX);
+
         if (cookie == null) {
-            return forward(exchange, chain, false);
+            return webSocket ? unauthorized(exchange) : forward(exchange, chain, false);
         }
 
         Claims claims = parseAccessClaims(cookie.getValue());
         if (claims == null) {
-            return forward(exchange, chain, true);
+            return webSocket ? unauthorized(exchange) : forward(exchange, chain, true);
         }
 
         return isDenylisted(claims.getId())
-                .flatMap(denied -> forward(exchange, chain, denied));
+                .flatMap(denied -> denied && webSocket ? unauthorized(exchange) : forward(exchange, chain, denied));
+    }
+
+    private Mono<Void> unauthorized(ServerWebExchange exchange) {
+        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+        return exchange.getResponse().setComplete();
     }
 
     private Claims parseAccessClaims(String token) {

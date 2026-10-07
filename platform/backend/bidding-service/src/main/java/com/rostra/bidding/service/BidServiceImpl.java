@@ -60,7 +60,7 @@ public class BidServiceImpl implements BidService {
             maxAttempts = 3,
             backoff = @Backoff(delay = 50, multiplier = 2)
     )
-    public Bid placeBid(UUID bidderId, PlaceBidRequestDTO request, String bearerToken) {
+    public Bid placeBid(UUID bidderId, PlaceBidRequestDTO request) {
         // 1. Fetch auction state
         AuctionView auction = auctionClient.fetchAuction(request.auctionId());
 
@@ -82,8 +82,7 @@ public class BidServiceImpl implements BidService {
         auctionClient.updateCurrentPrice(
                 auction.id(),
                 request.amount(),
-                auction.version(),     // <-- new field on AuctionView
-                bearerToken
+                auction.version()
         );
 
         // 4. Persist Bid + OutboxEvent (as before)
@@ -105,8 +104,7 @@ public class BidServiceImpl implements BidService {
     public Bid recoverFromOptimisticLockFailure(
             ObjectOptimisticLockingFailureException ex,
             UUID bidderId,
-            PlaceBidRequestDTO request,
-            String bearerToken
+            PlaceBidRequestDTO request
     ) {
         log.warn("Bid placement failed after retries for auction {}: optimistic lock conflict",
                 request.auctionId());

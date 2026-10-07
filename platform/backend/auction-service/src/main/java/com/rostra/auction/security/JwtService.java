@@ -43,6 +43,17 @@ public class JwtService {
         }
     }
 
+    /** Valid signature, not expired, type=SERVICE and issued to the expected calling service. */
+    public boolean isValidServiceToken(String token, String expectedService) {
+        try {
+            Claims claims = parse(token);
+            return "SERVICE".equals(claims.get(CLAIM_TYPE, String.class))
+                    && expectedService.equals(claims.getSubject());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public UUID extractUserId(String token) {
         return UUID.fromString(parse(token).getSubject());
     }

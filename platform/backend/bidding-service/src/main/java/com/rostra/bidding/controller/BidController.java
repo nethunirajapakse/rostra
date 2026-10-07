@@ -25,15 +25,9 @@ public class BidController {
     @PostMapping
     public ResponseEntity<BidResponse> placeBid(
             @AuthenticationPrincipal UUID bidderId,
-            @CookieValue(name = "access_token", required = false) String cookieToken,
-            @RequestHeader(name = "Authorization", required = false) String authHeader,
             @Valid @RequestBody PlaceBidRequestDTO request
     ) {
-        // The same token is forwarded to the auction-service for the price update.
-        String token = cookieToken != null
-                ? cookieToken
-                : (authHeader != null && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null);
-        Bid bid = bidService.placeBid(bidderId, request, token);
+        Bid bid = bidService.placeBid(bidderId, request);
         BidResponse body = BidResponse.from(bid);
         return ResponseEntity.created(URI.create("/bids/" + bid.getId())).body(body);
     }

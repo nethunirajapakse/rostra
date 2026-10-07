@@ -77,7 +77,6 @@ public class AuctionController {
     @PatchMapping("/{id}/current-price")
     public AuctionResponseDTO updateCurrentPrice(
             @PathVariable UUID id,
-            @AuthenticationPrincipal UUID userId,
             @Valid @RequestBody UpdateCurrentPriceRequestDTO req
     ) {
         Auction updated = auctionService.updateCurrentPrice(id, req.newPrice(), req.expectedVersion());

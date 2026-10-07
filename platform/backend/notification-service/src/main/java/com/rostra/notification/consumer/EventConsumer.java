@@ -6,6 +6,9 @@ import com.rostra.notification.entity.NotificationType;
 import com.rostra.notification.event.AuctionEndedEvent;
 import com.rostra.notification.event.BidPlacedEvent;
 import com.rostra.notification.repository.NotificationRepository;
+import com.rostra.notification.dto.NotificationResponse;
+import com.rostra.notification.ws.NotificationCreatedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -19,10 +22,19 @@ public class EventConsumer {
 
     private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher events;
 
-    public EventConsumer(NotificationRepository notificationRepository, ObjectMapper objectMapper) {
+    public EventConsumer(NotificationRepository notificationRepository, ObjectMapper objectMapper,
+                         ApplicationEventPublisher events) {
         this.notificationRepository = notificationRepository;
         this.objectMapper = objectMapper;
+        this.events = events;
+    }
+
+    /** Store the notification; it is pushed over WebSocket only after this transaction commits. */
+    private void saveAndPush(Notification notification) {
+        Notification saved = notificationRepository.save(notification);
+        events.publishEvent(new NotificationCreatedEvent(saved.getUserId(), NotificationResponse.from(saved)));
     }
 
     @KafkaListener(topics = "${app.kafka.topics.bid-placed}", groupId = "notification-service")
@@ -34,14 +46,14 @@ public class EventConsumer {
                     event.bidId(), event.auctionId(), event.amount());
 
             // Seller: someone bid on your auction.
-            notificationRepository.save(new Notification(
+            saveAndPush(new Notification(
                     event.sellerId(),
                     NotificationType.BID_RECEIVED_ON_YOUR_AUCTION,
                     String.format("New bid of %s on your auction", event.amount()),
                     event.auctionId()));
 
             // Bidder: confirmation of their own bid.
-            notificationRepository.save(new Notification(
+            saveAndPush(new Notification(
                     event.bidderId(),
                     NotificationType.BID_PLACED,
                     String.format("Your bid of %s was placed", event.amount()),
@@ -49,7 +61,7 @@ public class EventConsumer {
 
             // Previous leader: you have been outbid.
             if (event.previousBidderId() != null) {
-                notificationRepository.save(new Notification(
+                saveAndPush(new Notification(
                         event.previousBidderId(),
                         NotificationType.OUTBID,
                         String.format("You were outbid. The new highest bid is %s", event.amount()),
@@ -80,7 +92,7 @@ public class EventConsumer {
                     "Your auction has ended",
                     event.auctionId()
             );
-            notificationRepository.save(sellerNotification);
+            saveAndPush(sellerNotification);
 
             log.info("Persisted auction-ended notification for seller {}", event.sellerId());
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
