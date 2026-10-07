@@ -62,5 +62,3 @@ That spins up Postgres, Redis, Kafka, Zookeeper, and a Kafka UI (at http://local
 Set `JWT_SECRET` first (see `.env.example`); the gateway and every service refuse to start without it.
 Then start each Spring service from `platform/backend/<name>/` (`mvn spring-boot:run`).
 
-## Status
-Auth (cookie sessions, Redis revocation), Auction, Bidding and Notification services are in place; the WebSocket layer and the React UI are not built yet.
