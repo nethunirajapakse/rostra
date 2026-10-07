@@ -88,6 +88,3 @@ bash scripts/demo-kafka-outage.sh   # outbox demo
 - WebSocket sessions are in memory, so notification-service is single-instance.
 - No payments: winning an auction produces a notification, not a checkout.
 
-## License
-
-MIT
