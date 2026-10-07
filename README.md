@@ -2,8 +2,6 @@
 
 A real-time auction platform built as event-driven microservices. Sellers list items, bidders compete, and everyone sees prices and notifications update live.
 
-I built it to practise the reliability patterns that matter in distributed systems: not losing events when Kafka is down, not double-processing them when they are delivered twice, and not selling an item to two people when bids arrive at the same moment.
-
 **Stack:** Java 21 · Spring Boot 3 · Spring Cloud Gateway · Kafka · PostgreSQL 16 · Redis · WebSocket · React 19 · TypeScript · Tailwind 4 · TanStack Query
 
 ## What it does
@@ -132,23 +130,6 @@ Cookie sessions, enforced at the gateway.
 - Unauthenticated WebSocket upgrades are refused with `401` at the gateway.
 
 Browser clients: send `credentials: 'include'` and copy the `XSRF-TOKEN` cookie into an `X-XSRF-TOKEN` header on writes. The frontend's `api.ts` already does this and also performs a single refresh and retry on a `401`.
-
-## API overview
-
-All requests go through the gateway on `:8080`.
-
-| Method and path | Auth | Description |
-|---|---|---|
-| `POST /auth/signup`, `/auth/signin` | public | Create an account, start a session |
-| `POST /auth/refresh`, `/auth/signout` | cookie | Rotate tokens, end the session |
-| `GET /auth/me` | user | Current user |
-| `GET /auctions`, `GET /auctions/{id}` | public | Browse, filter and page auctions |
-| `POST /auctions`, `PATCH /auctions/{id}`, `DELETE /auctions/{id}` | user | Create, edit, cancel (seller only) |
-| `GET /bids?auctionId=…` | public | Bid history, newest first, paged |
-| `POST /bids` | user | Place a bid |
-| `GET /me/notifications`, `GET /me/notifications/unread-count` | user | Inbox and unread count |
-| `PATCH /me/notifications/{id}/read`, `POST /me/notifications/read-all` | user | Mark read |
-| `WS /ws/notifications` | user | Live notification stream |
 
 ## Running locally
 
