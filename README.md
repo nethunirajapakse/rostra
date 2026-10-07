@@ -34,6 +34,13 @@ flowchart LR
 
 Each service owns its own database (`rostra_auth`, `rostra_auction`, `rostra_bidding`, `rostra_notification`). Services use HTTP for commands and Kafka for events.
 
+## Authentication
+
+- Sign-in sets two `HttpOnly`, `SameSite=Strict` cookies: a 15-minute access JWT and a 7-day refresh JWT. Refresh rotates the pair; sign-out denylists the access token in Redis.
+- The gateway validates the cookie, drops any `Authorization` header, and enforces double-submit CSRF (`XSRF-TOKEN` cookie, `X-XSRF-TOKEN` header) on writes.
+- Services re-verify the token locally and never call auth-service.
+- Anonymous requests get `401`, forbidden ones `403`. Unauthenticated WebSocket upgrades get `401`.
+
 ## Reliability patterns
 
 | Problem | Solution |
@@ -46,13 +53,6 @@ Each service owns its own database (`rostra_auth`, `rostra_auction`, `rostra_bid
 | Internal endpoint called from outside | Gateway blocks it, and it only accepts a short-lived `SERVICE` token. |
 
 `scripts/demo-kafka-outage.sh` stops Kafka, places bids, restarts Kafka, and shows that nothing was lost.
-
-## Authentication
-
-- Sign-in sets two `HttpOnly`, `SameSite=Strict` cookies: a 15-minute access JWT and a 7-day refresh JWT. Refresh rotates the pair; sign-out denylists the access token in Redis.
-- The gateway validates the cookie, drops any `Authorization` header, and enforces double-submit CSRF (`XSRF-TOKEN` cookie, `X-XSRF-TOKEN` header) on writes.
-- Services re-verify the token locally and never call auth-service.
-- Anonymous requests get `401`, forbidden ones `403`. Unauthenticated WebSocket upgrades get `401`.
 
 ## Running locally
 
