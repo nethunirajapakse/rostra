@@ -2,6 +2,7 @@ package com.rostra.auction.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
@@ -17,6 +18,8 @@ import java.util.UUID;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    private static final String ACCESS_TOKEN_COOKIE = "access_token";
+
     private final JwtService jwtService;
 
     public JwtAuthFilter(JwtService jwtService) {
@@ -30,22 +33,39 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull FilterChain chain
     ) throws ServletException, IOException {
 
-        String header = request.getHeader("Authorization");
+        String token = resolveToken(request);
 
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
-            if (jwtService.isValid(token)) {
-                UUID userId = jwtService.extractUserId(token);
-                var auth = new UsernamePasswordAuthenticationToken(
-                        userId,
-                        null,
-                        Collections.emptyList()
-                );
-                auth.setDetails(request);
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            }
+        if (token != null && jwtService.isValid(token)) {
+            UUID userId = jwtService.extractUserId(token);
+            var auth = new UsernamePasswordAuthenticationToken(
+                    userId,
+                    null,
+                    Collections.emptyList()
+            );
+            auth.setDetails(request);
+            SecurityContextHolder.getContext().setAuthentication(auth);
         }
 
         chain.doFilter(request, response);
+    }
+
+    /**
+     * Browser clients authenticate with the access_token cookie. The Bearer header is kept for internal
+     * service-to-service calls (the gateway strips Authorization from outside traffic).
+     */
+    private String resolveToken(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (ACCESS_TOKEN_COOKIE.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+        return null;
     }
 }

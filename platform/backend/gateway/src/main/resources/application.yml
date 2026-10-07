@@ -1,6 +1,11 @@
 spring:
   application:
     name: gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: ${REDIS_TIMEOUT:500ms}
   cloud:
     gateway:
       server:
@@ -22,6 +27,12 @@ spring:
               uri: http://localhost:8084
               predicates:
                 - Path=/me/notifications/**
+            # Live notifications. ws:// makes the gateway proxy the WebSocket upgrade; the cookie is validated
+            # by JwtEdgeFilter exactly like a normal request, then notification-service authenticates it again.
+            - id: notification-ws
+              uri: ws://localhost:8084
+              predicates:
+                - Path=/ws/notifications
           globalcors:
             cors-configurations:
               '[/**]':
@@ -38,6 +49,13 @@ spring:
                 allowedHeaders:
                   - "*"
                 allowCredentials: true
+
+app:
+  jwt:
+    # Required. Same value as every other service. Raw UTF-8 bytes, at least 32 bytes.
+    secret: ${JWT_SECRET}
+  cookie:
+    secure: ${COOKIE_SECURE:false}
 
 server:
   port: 8080

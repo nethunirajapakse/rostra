@@ -22,5 +22,5 @@ public interface AuctionService {
 
     Auction cancel(UUID userId, UUID auctionId);
 
-    Auction updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion);
+    Auction updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion, UUID bidderId);
 }

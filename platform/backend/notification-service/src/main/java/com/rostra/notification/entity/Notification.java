@@ -33,6 +33,10 @@ public class Notification {
     @Column(name = "auction_id")
     private UUID auctionId;
 
+    /** The event this notification came from (bidId or auctionId); used to ignore Kafka redeliveries. */
+    @Column(name = "source_event_id")
+    private UUID sourceEventId;
+
     @Column(name = "read_flag", nullable = false)
     private boolean read;
 
@@ -48,6 +52,11 @@ public class Notification {
         this.message = message;
         this.auctionId = auctionId;
         this.read = false;
+    }
+
+    public Notification(UUID userId, NotificationType type, String message, UUID auctionId, UUID sourceEventId) {
+        this(userId, type, message, auctionId);
+        this.sourceEventId = sourceEventId;
     }
 
     public UUID getId() { return id; }

@@ -11,6 +11,7 @@ import com.rostra.bidding.entity.OutboxEvent;
 import com.rostra.bidding.event.BidPlacedEvent;
 import com.rostra.bidding.exception.AuctionNotBiddableException;
 import com.rostra.bidding.exception.InvalidBidException;
+import com.rostra.bidding.exception.OwnAuctionBidException;
 import com.rostra.bidding.repository.BidRepository;
 import com.rostra.bidding.repository.OutboxRepository;
 import org.slf4j.Logger;
@@ -59,20 +60,30 @@ public class BidServiceImpl implements BidService {
             maxAttempts = 3,
             backoff = @Backoff(delay = 50, multiplier = 2)
     )
-    public Bid placeBid(UUID bidderId, PlaceBidRequestDTO request, String bearerToken) {
+    public Bid placeBid(UUID bidderId, PlaceBidRequestDTO request) {
         // 1. Fetch auction state
         AuctionView auction = auctionClient.fetchAuction(request.auctionId());
 
         // 2. State + amount validation (as before)
+        if (bidderId.equals(auction.sellerId())) {
+            throw new OwnAuctionBidException("You cannot bid on your own auction");
+        }
         validateAuctionState(auction);
         validateBidAmount(request.amount(), auction);
+
+        // Who is currently leading? They get an "outbid" notice once this bid lands.
+        UUID previousBidderId = bidRepository
+                .findTopByAuctionIdAndStatusOrderByAmountDesc(auction.id(), BidStatus.ACCEPTED)
+                .map(Bid::getBidderId)
+                .filter(id -> !id.equals(bidderId))
+                .orElse(null);
 
         // 3. Update auction's current_price — may throw ObjectOptimisticLockingFailureException
         auctionClient.updateCurrentPrice(
                 auction.id(),
                 request.amount(),
-                auction.version(),     // <-- new field on AuctionView
-                bearerToken
+                auction.version(),
+                bidderId
         );
 
         // 4. Persist Bid + OutboxEvent (as before)
@@ -80,7 +91,7 @@ public class BidServiceImpl implements BidService {
         bid = bidRepository.save(bid);
 
         BidPlacedEvent event = new BidPlacedEvent(bid.getId(), bid.getAuctionId(),
-                bid.getBidderId(), bid.getAmount(),
+                auction.sellerId(), bid.getBidderId(), previousBidderId, bid.getAmount(),
                 bid.getPlacedAt() != null ? bid.getPlacedAt() : Instant.now());
         OutboxEvent outboxRow = new OutboxEvent(bid.getId(), bidPlacedTopic, serializeEvent(event));
         outboxRepository.save(outboxRow);
@@ -94,8 +105,7 @@ public class BidServiceImpl implements BidService {
     public Bid recoverFromOptimisticLockFailure(
             ObjectOptimisticLockingFailureException ex,
             UUID bidderId,
-            PlaceBidRequestDTO request,
-            String bearerToken
+            PlaceBidRequestDTO request
     ) {
         log.warn("Bid placement failed after retries for auction {}: optimistic lock conflict",
                 request.auctionId());

@@ -2,6 +2,7 @@ package com.rostra.bidding.client;
 
 import com.rostra.bidding.exception.AuctionNotFoundException;
 import com.rostra.bidding.exception.AuctionServiceUnavailableException;
+import com.rostra.bidding.security.ServiceTokenProvider;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,11 @@ public class AuctionServiceClient {
 
     private final RestClient restClient;
 
-    public AuctionServiceClient(@Value("${app.services.auction.base-url}") String baseUrl) {
+    private final ServiceTokenProvider serviceTokens;
+
+    public AuctionServiceClient(@Value("${app.services.auction.base-url}") String baseUrl,
+                                ServiceTokenProvider serviceTokens) {
+        this.serviceTokens = serviceTokens;
         this.restClient = RestClient.builder()
                 .baseUrl(baseUrl)
                 .build();
@@ -52,15 +57,16 @@ public class AuctionServiceClient {
         );
     }
 
-    public AuctionView updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion, String bearerToken) {
+    public AuctionView updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion, UUID bidderId) {
         Object body = java.util.Map.of(
                 "newPrice", newPrice,
-                "expectedVersion", expectedVersion
+                "expectedVersion", expectedVersion,
+                "bidderId", bidderId
         );
         try {
             return restClient.patch()
                     .uri("/auctions/{id}/current-price", auctionId)
-                    .header("Authorization", "Bearer " + bearerToken)
+                    .header(ServiceTokenProvider.HEADER, serviceTokens.mint())
                     .header("Content-Type", "application/json")
                     .body(body)
                     .retrieve()
