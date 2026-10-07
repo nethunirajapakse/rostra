@@ -27,7 +27,7 @@ public record AuctionResponseDTO(
         return new AuctionResponseDTO(
                 a.getId(),
                 a.getSellerId(),
-                a.getWinnerId(),
+                a.getStatus() == AuctionStatus.ENDED ? a.getWinnerId() : null,
                 a.getTitle(),
                 a.getDescription(),
                 a.getStartingPrice(),

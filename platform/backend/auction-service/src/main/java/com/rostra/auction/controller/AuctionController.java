@@ -79,7 +79,7 @@ public class AuctionController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateCurrentPriceRequestDTO req
     ) {
-        Auction updated = auctionService.updateCurrentPrice(id, req.newPrice(), req.expectedVersion());
+        Auction updated = auctionService.updateCurrentPrice(id, req.newPrice(), req.expectedVersion(), req.bidderId());
         return AuctionResponseDTO.from(updated);
     }
 }

@@ -128,7 +128,7 @@ public class AuctionServiceImpl implements AuctionService{
 
     @Override
     @Transactional
-    public Auction updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion) {
+    public Auction updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion, UUID bidderId) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new AuctionNotFoundException(auctionId));
 
@@ -156,6 +156,8 @@ public class AuctionServiceImpl implements AuctionService{
         }
 
         auction.setCurrentPrice(newPrice);
+        // While ACTIVE this is the current leader; when the auction ends the leader becomes the winner.
+        auction.setWinnerId(bidderId);
         // dirty checking handles the UPDATE; @Version annotation increments version automatically
         return auction;
     }

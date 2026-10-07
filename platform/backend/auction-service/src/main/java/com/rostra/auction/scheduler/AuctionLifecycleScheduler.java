@@ -56,11 +56,16 @@ public class AuctionLifecycleScheduler {
 
         for (Auction auction : toEnd) {
             auction.setStatus(AuctionStatus.ENDED);
+            if (auction.getWinnerId() != null) {
+                auction.setFinalPrice(auction.getCurrentPrice());
+            }
             log.info("Ended auction {} ({})", auction.getId(), auction.getTitle());
 
             AuctionEndedEvent event = new AuctionEndedEvent(
                     auction.getId(),
                     auction.getSellerId(),
+                    auction.getWinnerId(),
+                    auction.getFinalPrice(),
                     now
             );
             eventPublisher.publishAuctionEnded(event);

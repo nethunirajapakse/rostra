@@ -82,7 +82,8 @@ public class BidServiceImpl implements BidService {
         auctionClient.updateCurrentPrice(
                 auction.id(),
                 request.amount(),
-                auction.version()
+                auction.version(),
+                bidderId
         );
 
         // 4. Persist Bid + OutboxEvent (as before)

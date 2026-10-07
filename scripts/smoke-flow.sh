@@ -67,7 +67,7 @@ register "$RIVAL_JAR" rival;    RIVAL_ID=$USER_ID
 
 echo "== auction"
 STARTS=$(iso_in 25)
-ENDS=$(iso_in 900)
+ENDS=$(iso_in 75)
 call "$SELLER_JAR" POST /auctions \
   "{\"title\":\"Smoke auction $RUN\",\"description\":\"end-to-end smoke test\",\"startingPrice\":100.00,\"minIncrement\":10.00,\"startsAt\":\"$STARTS\",\"endsAt\":\"$ENDS\"}"
 check "seller creates an auction" 201 "$CODE"
@@ -105,9 +105,9 @@ if command -v node >/dev/null 2>&1 && node -e 'process.exit(typeof WebSocket==="
     node "$SCRIPT_DIR/ws-listen.mjs" "$WS_URL" "$2" "$TMP/ws-$1.txt" "$3" >/dev/null 2>&1 &
     WS_PIDS+=("$!")
   }
-  ws_start seller "$(token_of "$SELLER_JAR")" 60
-  ws_start bidder "$(token_of "$BIDDER_JAR")" 60
-  ws_start rival  "$(token_of "$RIVAL_JAR")" 60
+  ws_start seller "$(token_of "$SELLER_JAR")" 150
+  ws_start bidder "$(token_of "$BIDDER_JAR")" 150
+  ws_start rival  "$(token_of "$RIVAL_JAR")" 150
   ws_start anon   "" 8
   for _ in $(seq 1 10); do
     grep -q '^OPEN' "$TMP/ws-seller.txt" 2>/dev/null && grep -q '^OPEN' "$TMP/ws-bidder.txt" 2>/dev/null \
@@ -180,6 +180,51 @@ if [ "$WS_OK" = yes ]; then
   check "first bidder was pushed the outbid notice live" 1 "$(ws_has bidder OUTBID | tr -d ' ')"
   check "rival was pushed a bid confirmation live" 1 "$(ws_has rival BID_PLACED | tr -d ' ')"
 fi
+echo "== auction ends (winner, final price, closing notifications)"
+info "waiting for the auction to end (about a minute after it started)..."
+status=""
+for _ in $(seq 1 60); do
+  call "$ANON_JAR" GET "/auctions/$AUCTION_ID"
+  status=$(json_str "$BODY" status)
+  [ "$status" = "ENDED" ] && break
+  sleep 2
+done
+check "auction ends when its time is up" ENDED "$status"
+check "winner is the highest bidder" "$RIVAL_ID" "$(json_str "$BODY" winnerId)"
+final=$(printf '%s' "$BODY" | grep -Eo '"finalPrice"[[:space:]]*:[[:space:]]*130(\.0+)?[,}]' | wc -l | tr -d ' ')
+check "final price is the winning bid (130)" 1 "$final"
+
+won=0; lost=0; sold=0; rival_lost=0
+for _ in $(seq 1 25); do
+  call "$RIVAL_JAR" GET /me/notifications
+  won=$(count_type "$BODY" AUCTION_WON); rival_lost=$(count_type "$BODY" AUCTION_ENDED_AS_BIDDER)
+  call "$BIDDER_JAR" GET /me/notifications; lost=$(count_type "$BODY" AUCTION_ENDED_AS_BIDDER)
+  call "$SELLER_JAR" GET /me/notifications; sold=$(count_type "$BODY" AUCTION_ENDED_AS_SELLER)
+  [ "$won" -ge 1 ] && [ "$lost" -ge 1 ] && [ "$sold" -ge 1 ] && break
+  sleep 1
+done
+check "winner is told they won" 1 "$won"
+check "the other bidder is told they did not win" 1 "$lost"
+check "the winner is not told they lost" 0 "$rival_lost"
+check "seller is told the auction ended" 1 "$sold"
+if [ "$WS_OK" = yes ]; then
+  check "winner was pushed the result live" 1 "$(ws_has rival AUCTION_WON | tr -d ' ')"
+fi
+
+echo "== read state"
+unread_of() { call "$1" GET /me/notifications/unread-count; printf '%s' "$BODY" | grep -oE '[0-9]+' | head -n1; }
+before=$(unread_of "$RIVAL_JAR")
+call "$RIVAL_JAR" GET /me/notifications
+FIRST_ID=$(json_str "$BODY" id)
+call "$SELLER_JAR" PATCH "/me/notifications/$FIRST_ID/read"
+check "another user cannot mark someone else's notification read" 404 "$CODE"
+call "$RIVAL_JAR" PATCH "/me/notifications/$FIRST_ID/read"
+check "owner marks one notification read" 200 "$CODE"
+check "unread count dropped by one" $((before - 1)) "$(unread_of "$RIVAL_JAR")"
+call "$RIVAL_JAR" POST /me/notifications/read-all
+check "mark all read answers" 200 "$CODE"
+check "nothing is unread afterwards" 0 "$(unread_of "$RIVAL_JAR")"
+
 call "$BIDDER_JAR" GET /me/notifications/unread-count
 check "unread-count answers" 200 "$CODE"
 

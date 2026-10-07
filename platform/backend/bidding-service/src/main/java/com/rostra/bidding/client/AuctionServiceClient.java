@@ -57,10 +57,11 @@ public class AuctionServiceClient {
         );
     }
 
-    public AuctionView updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion) {
+    public AuctionView updateCurrentPrice(UUID auctionId, BigDecimal newPrice, Long expectedVersion, UUID bidderId) {
         Object body = java.util.Map.of(
                 "newPrice", newPrice,
-                "expectedVersion", expectedVersion
+                "expectedVersion", expectedVersion,
+                "bidderId", bidderId
         );
         try {
             return restClient.patch()
