@@ -11,6 +11,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 SELLER_JAR="$TMP/seller.txt"
 BIDDER_JAR="$TMP/bidder.txt"
+RIVAL_JAR="$TMP/rival.txt"
 ANON_JAR="$TMP/anon.txt"
 RUN="$RANDOM$RANDOM"
 PASS='Passw0rd!smoke'
@@ -61,9 +62,10 @@ register() { # jar label  -> sets USER_ID
 }
 register "$SELLER_JAR" seller;  SELLER_ID=$USER_ID
 register "$BIDDER_JAR" bidder;  BIDDER_ID=$USER_ID
+register "$RIVAL_JAR" rival;    RIVAL_ID=$USER_ID
 
 echo "== auction"
-STARTS=$(iso_in 3)
+STARTS=$(iso_in 25)
 ENDS=$(iso_in 900)
 call "$SELLER_JAR" POST /auctions \
   "{\"title\":\"Smoke auction $RUN\",\"description\":\"end-to-end smoke test\",\"startingPrice\":100.00,\"minIncrement\":10.00,\"startsAt\":\"$STARTS\",\"endsAt\":\"$ENDS\"}"
@@ -81,9 +83,9 @@ check "another user cannot edit the auction" 403 "$CODE"
 call "$SELLER_JAR" PATCH "/auctions/$AUCTION_ID" '{"title":"Smoke auction (edited)"}'
 check "seller can edit their own auction" 200 "$CODE"
 
-info "waiting for the scheduler to activate it (it ticks every 10s)..."
+info "waiting for the start time + scheduler tick (up to ~40s)..."
 status=""
-for _ in $(seq 1 30); do
+for _ in $(seq 1 60); do
   call "$ANON_JAR" GET "/auctions/$AUCTION_ID"
   status=$(json_str "$BODY" status)
   [ "$status" = "ACTIVE" ] && break
@@ -103,27 +105,33 @@ call "$ANON_JAR" GET "/auctions/$AUCTION_ID"
 moved=$(printf '%s' "$BODY" | grep -Eo '"currentPrice"[[:space:]]*:[[:space:]]*110(\.0+)?[,}]' | wc -l | tr -d ' ')
 check "auction price moved to 110 (bidding called auction with the forwarded token)" 1 "$moved"
 
+call "$SELLER_JAR" POST /bids "{\"auctionId\":\"$AUCTION_ID\",\"amount\":120.00}"
+check "seller cannot bid on their own auction" 403 "$CODE"
+call "$RIVAL_JAR" POST /bids "{\"auctionId\":\"$AUCTION_ID\",\"amount\":130.00}"
+check "rival outbids the first bidder" 201 "$CODE"
+
 echo "== notifications (needs Kafka + notification-service)"
-for_auction() { printf '%s' "$1" | grep -oE "\"auctionId\"[[:space:]]*:[[:space:]]*\"$AUCTION_ID\"" | wc -l | tr -d ' '; }
-bidder_count=0; seller_count=0; notif_code=200
-for _ in $(seq 1 20); do
-  call "$BIDDER_JAR" GET /me/notifications
-  notif_code=$CODE
+count_type() { printf '%s' "$1" | grep -oE "\"type\"[[:space:]]*:[[:space:]]*\"$2\"" | wc -l | tr -d ' '; }
+seller_n=0; bidder_placed=0; bidder_outbid=0; rival_placed=0; notif_code=200
+for _ in $(seq 1 25); do
+  call "$SELLER_JAR" GET /me/notifications; notif_code=$CODE
   [ "$CODE" = 200 ] || break
-  bidder_count=$(for_auction "$BODY")
-  call "$SELLER_JAR" GET /me/notifications
-  seller_count=$(for_auction "$BODY")
-  [ $((bidder_count + seller_count)) -gt 0 ] && break
+  seller_n=$(count_type "$BODY" BID_RECEIVED_ON_YOUR_AUCTION)
+  call "$BIDDER_JAR" GET /me/notifications
+  bidder_placed=$(count_type "$BODY" BID_PLACED); bidder_outbid=$(count_type "$BODY" OUTBID)
+  call "$RIVAL_JAR" GET /me/notifications
+  rival_placed=$(count_type "$BODY" BID_PLACED)
+  [ "$seller_n" -ge 2 ] && [ "$bidder_outbid" -ge 1 ] && [ "$rival_placed" -ge 1 ] && break
   sleep 1
 done
 check "notification inbox answers" 200 "$notif_code"
 if [ "$notif_code" != 200 ]; then
   info "is notification-service running? it also needs Kafka (docker ps should list rostra-kafka)"
 fi
-has=no; [ $((bidder_count + seller_count)) -gt 0 ] && has=yes
-check "the bid produced a notification (bidding -> Kafka -> notification-service)" yes "$has"
-info "bidder inbox: $bidder_count, seller inbox: $seller_count for this auction"
-info "today the bidder is told about their own bid and the seller hears nothing; that changes in the next step"
+check "seller is told about both bids" 2 "$seller_n"
+check "first bidder got a bid confirmation" 1 "$bidder_placed"
+check "first bidder was told they were outbid" 1 "$bidder_outbid"
+check "rival got a bid confirmation" 1 "$rival_placed"
 call "$BIDDER_JAR" GET /me/notifications/unread-count
 check "unread-count answers" 200 "$CODE"
 
