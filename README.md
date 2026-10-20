@@ -81,7 +81,7 @@ bash scripts/smoke-flow.sh          # end-to-end checks against the running stac
 bash scripts/demo-kafka-outage.sh   # outbox demo
 ```
 
-## Limitations and next steps
+## Next steps
 
 - Schema comes from Hibernate `ddl-auto=update`; Flyway migrations would be the proper fix.
 - One shared HMAC secret signs all tokens; production would use asymmetric keys and mTLS.
