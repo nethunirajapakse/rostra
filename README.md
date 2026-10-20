@@ -81,10 +81,13 @@ bash scripts/smoke-flow.sh          # end-to-end checks against the running stac
 bash scripts/demo-kafka-outage.sh   # outbox demo
 ```
 
-## Next steps
+<!-- ## Next steps
 
 - Schema comes from Hibernate `ddl-auto=update`; Flyway migrations would be the proper fix.
 - One shared HMAC secret signs all tokens; production would use asymmetric keys and mTLS.
 - WebSocket sessions are in memory, so notification-service is single-instance.
 - No payments: winning an auction produces a notification, not a checkout.
+
+
+-->
 
