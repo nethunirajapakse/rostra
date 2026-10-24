@@ -1,75 +1,37 @@
-# React + TypeScript + Vite
+# Rostra frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19, Vite, TypeScript, Tailwind CSS 4, React Router, TanStack Query and Zustand.
 
-Currently, two official plugins are available:
+## Run it
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev        # http://localhost:5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The backend must be running (gateway on `:8080`, plus auth, auction, bidding and notification services).
+To point at another gateway: `GATEWAY_URL=http://host:8080 npm run dev`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+In development the browser only talks to the Vite server, which forwards the API paths (`/auth`, `/auctions`,
+`/bids`, `/me`, and the `/ws` WebSocket) to the gateway. Everything is therefore same-origin, so the HttpOnly
+auth cookies and the gateway's `XSRF-TOKEN` cookie work without any CORS setup. Page routes were chosen not to
+clash with those API paths (`/lot/:id`, `/sell`, `/mine`, `/inbox`, `/signin`, `/signup`).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## How it fits together
 
-```
+| Concern | Where | Notes |
+| --- | --- | --- |
+| Server state (auctions, bids, notifications) | TanStack Query, `src/api/*` | Cached, polled while an auction is open, refreshed by live pushes |
+| Client state | Zustand, `src/store/*` | `session` (who is signed in), `toasts`, `live` (WebSocket status) |
+| HTTP | `src/lib/api.ts` | Sends `X-XSRF-TOKEN` on unsafe requests; on a 401 it calls `/auth/refresh` once (shared by concurrent requests) and retries |
+| Live updates | `src/lib/live.ts` | One WebSocket for the signed-in user, reconnects with backoff, refreshes the affected queries and shows a toast |
+| Routing | `src/App.tsx` | Public pages, plus `RequireAuth` for `/sell`, `/mine`, `/inbox` |
+
+Tokens are never readable by JavaScript (HttpOnly cookies). The only thing stored in `localStorage` is a
+"signed in before" hint, so anonymous visitors do not trigger two pointless 401 calls on every page load.
+
+## Scripts
+
+- `npm run dev` start the dev server
+- `npm run build` typecheck and build to `dist/`
+- `npm run lint` ESLint

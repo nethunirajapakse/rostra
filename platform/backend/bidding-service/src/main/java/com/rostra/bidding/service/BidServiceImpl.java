@@ -17,6 +17,8 @@ import com.rostra.bidding.repository.OutboxRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
@@ -99,6 +101,12 @@ public class BidServiceImpl implements BidService {
         log.info("Bid {} placed by user {} on auction {} for amount {}",
                 bid.getId(), bidderId, auction.id(), request.amount());
         return bid;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Bid> listForAuction(UUID auctionId, Pageable pageable) {
+        return bidRepository.findByAuctionIdOrderByPlacedAtDesc(auctionId, pageable);
     }
 
     @Recover

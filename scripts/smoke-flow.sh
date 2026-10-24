@@ -152,6 +152,10 @@ check "seller cannot bid on their own auction" 403 "$CODE"
 call "$RIVAL_JAR" POST /bids "{\"auctionId\":\"$AUCTION_ID\",\"amount\":130.00}"
 check "rival outbids the first bidder" 201 "$CODE"
 
+call "$ANON_JAR" GET "/bids?auctionId=$AUCTION_ID"
+check "bid history is public" 200 "$CODE"
+check "bid history lists both bids" 2 "$(printf '%s' "$BODY" | grep -oE '"bidderId"' | wc -l | tr -d ' ')"
+
 echo "== notifications (needs Kafka + notification-service)"
 count_type() { printf '%s' "$1" | grep -oE "\"type\"[[:space:]]*:[[:space:]]*\"$2\"" | wc -l | tr -d ' '; }
 seller_n=0; bidder_placed=0; bidder_outbid=0; rival_placed=0; notif_code=200

@@ -1,1 +1,103 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+
+  --color-marble: #f1f2ef;
+  --color-slab: #ffffff;
+  --color-ink: #1b2430;
+  --color-quiet: #5b6674;
+  --color-rule: #d6d9d4;
+  --color-verdigris: #17756a;
+  --color-verdigris-deep: #0f5a51;
+  --color-verdigris-tint: #dcebe8;
+  --color-bronze: #94590c;
+  --color-bronze-tint: #f5e6cd;
+  --color-alert: #b3261e;
+  --color-alert-tint: #f8e0dd;
+
+  --radius-ui: 6px;
+}
+
+@layer base {
+  html {
+    background: var(--color-marble);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100dvh;
+    background: var(--color-marble);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-verdigris);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-verdigris-tint);
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@layer utilities {
+  .figures {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+}
+
+/* The one orchestrated moment: when a bid lands, the price rolls in and the panel flashes verdigris. */
+@keyframes price-roll {
+  from {
+    opacity: 0;
+    transform: translateY(0.35em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes panel-flash {
+  0% {
+    box-shadow: inset 0 0 0 2px var(--color-verdigris);
+    background-color: color-mix(in srgb, var(--color-verdigris) 14%, transparent);
+  }
+  100% {
+    box-shadow: inset 0 0 0 2px transparent;
+    background-color: transparent;
+  }
+}
+.price-roll {
+  animation: price-roll 380ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.panel-flash {
+  animation: panel-flash 1100ms ease-out;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.toast-in {
+  animation: toast-in 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .price-roll,
+  .panel-flash,
+  .toast-in {
+    animation: none;
+  }
+}
