@@ -1,64 +1,102 @@
-# rostra
+# Rostra
 
-> Real-time auction platform built on event-driven microservices.
+[![CI](https://github.com/nethunirajapakse/rostra/actions/workflows/ci.yml/badge.svg)](https://github.com/nethunirajapakse/rostra/actions/workflows/ci.yml)
 
-A demonstration of distributed systems patterns: Kafka for durable event streaming, WebSockets for real-time client updates, and per-service Postgres databases. Built to explore how Spring Boot microservices communicate reliably under failure conditions.
+A real-time auction platform built as event-driven microservices. Sellers list items, bidders compete, and prices and notifications update live.
+
+Built to practise reliability patterns: not losing events when Kafka is down, not processing them twice, and not selling an item to two people.
+
+**Stack:** Java 21 · Spring Boot 3 · Spring Cloud Gateway · Kafka · PostgreSQL 16 · Redis · WebSocket · React 19 · TypeScript · Tailwind 4 · TanStack Query
 
 ## Architecture
 
-Four Spring Boot services behind a gateway, communicating via Apache Kafka, each owning its own Postgres database.
+```mermaid
+flowchart LR
+    Browser["React SPA :5173"] -- "HTTPS + cookies" --> GW
+    Browser -. "WebSocket" .-> GW
 
+    GW["Gateway :8080<br/>JWT · CSRF · route guard"]
+    GW --> AUTH["auth :8081"]
+    GW --> AUC["auction :8082"]
+    GW --> BID["bidding :8083"]
+    GW --> NOT["notification :8084"]
+
+    AUTH --- DB1[("Postgres")]
+    AUC --- DB2[("Postgres")]
+    BID --- DB3[("Postgres")]
+    NOT --- DB4[("Postgres")]
+    AUTH --- R[("Redis")]
+    GW -.-> R
+
+    BID -- "service token" --> AUC
+    BID -- "outbox: bid.placed" --> K{{"Kafka"}}
+    AUC -- "outbox: auction.ended" --> K
+    K --> NOT
 ```
-[ React Frontend ] ── HTTPS / WSS ──┐
-                                    │
-                              [ API Gateway ]
-                                    │
-        ┌─────────────┬─────────────┼─────────────┐
-        ▼             ▼             ▼             ▼
-   [ Auth ]      [ Auction ]   [ Bidding ]   [ Notification ]
-        │             │             │             ▲
-        ▼             ▼             ▼             │
-   [ Postgres ]  [ Postgres ]  [ Postgres ]       │
-                                    │             │
-                                    └─► [ Kafka ] ┘
-```
+
+Each service owns its own database (`rostra_auth`, `rostra_auction`, `rostra_bidding`, `rostra_notification`). Services use HTTP for commands and Kafka for events.
 
 ## Authentication
 
-Cookie sessions, enforced at the gateway.
+- Sign-in sets two `HttpOnly`, `SameSite=Strict` cookies: a 15-minute access JWT and a 7-day refresh JWT. Refresh rotates the pair; sign-out denylists the access token in Redis.
+- The gateway validates the cookie, drops any `Authorization` header, and enforces double-submit CSRF (`XSRF-TOKEN` cookie, `X-XSRF-TOKEN` header) on writes.
+- Services re-verify the token locally and never call auth-service.
+- Anonymous requests get `401`, forbidden ones `403`. Unauthenticated WebSocket upgrades get `401`.
 
-- `POST /auth/signup`, `/auth/signin`, `/auth/refresh`, `/auth/signout`, `GET /auth/me`.
-- Signin sets two `HttpOnly`, `SameSite=Strict` cookies: a 15-minute access JWT (`access_token`) and a 7-day
-  refresh JWT (`refresh_token`, only sent to `/auth/*`). Both carry a `jti`.
-- Refresh rotates the pair: the old refresh `jti` is deleted from Redis, so replaying it fails.
-- Signout puts the access `jti` on a Redis denylist (TTL = remaining lifetime) and deletes the refresh `jti`.
-- Gateway: drops any `Authorization` header, forwards the `access_token` cookie only if it has a valid signature,
-  is unexpired, is an ACCESS token and is not denylisted, and enforces CSRF (double-submit `XSRF-TOKEN` cookie
-  and `X-XSRF-TOKEN` header) on every POST/PUT/PATCH/DELETE except signup and signin.
-- Services re-verify signature, expiry and token type locally. They never call the auth-service.
-- Redis calls sit behind a circuit breaker and fail open, so a Redis outage does not log everyone out.
-- `PATCH /auctions/{id}/current-price` is internal (bidding to auction) and answers 404 through the gateway.
+## Reliability patterns
 
-Browser clients: send `credentials: 'include'` and copy the `XSRF-TOKEN` cookie into an `X-XSRF-TOKEN` header
-on writes.
+| Problem | Solution |
+|---|---|
+| Kafka is down when a bid is placed | **Transactional outbox**: the event is saved with the bid in one transaction, then published by a poller. Also used for `auction.ended`. |
+| Kafka delivers an event twice | Consumers **dedupe** on the source event id. |
+| Two bids at the same moment | **Optimistic locking** on the auction, with a retry. An integration test fires 50 simultaneous bids and checks that exactly one wins ([how it works](platform/backend/bidding-service/src/test/java/com/rostra/bidding/concurrency/README.md)). |
+| Auction service is slow or failing | **Resilience4j** circuit breaker and retry. |
+| Redis is down | Gateway checks **fail open** behind a circuit breaker. |
+| Internal endpoint called from outside | Gateway blocks it, and it only accepts a short-lived `SERVICE` token. |
 
-## Tech stack
-
-- **Backend:** Java 21, Spring Boot 3, Spring Security (JWT)
-- **Messaging:** Apache Kafka
-- **Persistence:** PostgreSQL 16 (one DB per service), Redis (token revocation)
-- **Real-time:** WebSockets (Spring + STOMP)
-- **Frontend:** React + Vite
-- **Infrastructure:** Docker Compose
+`scripts/demo-kafka-outage.sh` stops Kafka, places bids, restarts Kafka, and shows that nothing was lost.
 
 ## Running locally
 
+Requires Java 21, Maven, Node 20+ and Docker.
+
 ```bash
-docker-compose up -d
+# 1. Infrastructure: Postgres, Redis, Kafka, Kafka UI (http://localhost:8090)
+docker compose up -d
+
+# 2. Shared signing secret (see .env.example). Set it for the gateway and every service.
+export JWT_SECRET="$(openssl rand -base64 48)"
+
+# 3. Each backend module, from platform/backend/<name>/
+mvn spring-boot:run
+
+# 4. Frontend
+cd platform/frontend && npm install && npm run dev    # http://localhost:5173
 ```
 
-That spins up Postgres, Redis, Kafka, Zookeeper, and a Kafka UI (at http://localhost:8090).
+In IntelliJ, set `JWT_SECRET` in each run configuration. The Vite dev server proxies API and WebSocket paths to the gateway, so the browser sees a single origin.
 
-Set `JWT_SECRET` first (see `.env.example`); the gateway and every service refuse to start without it.
-Then start each Spring service from `platform/backend/<name>/` (`mvn spring-boot:run`).
+## Testing
+
+```bash
+# Unit and integration tests, one service at a time. The integration tests start Postgres with
+# Testcontainers, so Docker must be running.
+cd platform/backend/<service> && mvn verify
+
+# End-to-end checks against the running stack
+bash scripts/smoke-flow.sh          # whole platform through the gateway
+bash scripts/demo-kafka-outage.sh   # outbox demo
+```
+
+GitHub Actions runs `mvn verify` for every service, plus the frontend lint and build, on each push and pull request.
+
+<!-- ## Next steps
+
+- Schema comes from Hibernate `ddl-auto=update`; Flyway migrations would be the proper fix.
+- One shared HMAC secret signs all tokens; production would use asymmetric keys and mTLS.
+- WebSocket sessions are in memory, so notification-service is single-instance.
+- No payments: winning an auction produces a notification, not a checkout.
+
+
+-->
 
