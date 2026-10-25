@@ -75,5 +75,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # The scripts need the whole stack running, so CI only checks that they still parse.
-      - run: bash -n scripts/smoke-auth.sh scripts/smoke-flow.sh scripts/demo-kafka-outage.sh
+      - run: bash -n scripts/smoke-auth.sh scripts/smoke-flow.sh scripts/demo-kafka-outage.sh scripts/db-reset.sh scripts/seed.sh
       - run: node --check scripts/ws-listen.mjs
+
+  # Checks that the compose file is valid and that every Dockerfile builds. Nothing is started or pushed.
+  docker:
+    name: docker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose --profile app config -q
+      - run: docker compose --profile app build
