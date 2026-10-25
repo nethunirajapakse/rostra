@@ -12,7 +12,7 @@ Built to practise reliability patterns: not losing events when Kafka is down, no
 
 ```mermaid
 flowchart LR
-    Browser["React SPA :5173"] -- "HTTPS + cookies" --> GW
+    Browser["React SPA :3000"] -- "HTTPS + cookies" --> GW
     Browser -. "WebSocket" .-> GW
 
     GW["Gateway :8080<br/>JWT · CSRF · route guard"]
@@ -21,6 +21,7 @@ flowchart LR
     GW --> BID["bidding :8083"]
     GW --> NOT["notification :8084"]
 
+    AUC --- S3[("RustFS<br/>photos (S3 API)")]
     AUTH --- DB1[("Postgres")]
     AUC --- DB2[("Postgres")]
     BID --- DB3[("Postgres")]
@@ -56,25 +57,34 @@ Each service owns its own database (`rostra_auth`, `rostra_auction`, `rostra_bid
 
 `scripts/demo-kafka-outage.sh` stops Kafka, places bids, restarts Kafka, and shows that nothing was lost.
 
-## Running locally
+## Running it
 
-Requires Java 21, Maven, Node 20+ and Docker.
+Requires Docker with Compose (about 4 GB of free memory for the full stack).
 
 ```bash
-# 1. Infrastructure: Postgres, Redis, Kafka, Kafka UI (http://localhost:8090)
-docker compose up -d
+docker compose --profile app up -d --build   # everything; the first build takes a few minutes
+```
 
-# 2. Shared signing secret (see .env.example). Set it for the gateway and every service.
-export JWT_SECRET="$(openssl rand -base64 48)"
+Then open **http://localhost:3000**. The API is also on `http://localhost:8080`. Wait until `docker compose ps` shows the gateway as healthy, then load demo data:
 
-# 3. Each backend module, from platform/backend/<name>/
-mvn spring-boot:run
+```bash
+bash scripts/seed.sh             # 8 users, 16 auctions with photos, bids and watchlists; sign in as demo@rostra.dev / Rostra@Demo1
+```
 
-# 4. Frontend
+A throwaway signing secret is built into `docker-compose.yml` so this works with no setup. Set your own with `JWT_SECRET=... docker compose --profile app up -d`. Auction photos are stored in RustFS, an S3-compatible object store (console at http://localhost:9001/rustfs/console/, access key `rostra-dev-key`, secret `rostra-dev-secret-0123`). Kafka UI is optional: `docker compose --profile tools up -d kafka-ui` (http://localhost:8090).
+
+`docker compose --profile app down -v` stops everything and deletes the data.
+
+### Developing from an IDE
+
+```bash
+docker compose up -d                                  # infrastructure only: Postgres, Redis, Kafka, RustFS
+export JWT_SECRET="$(openssl rand -base64 48)"        # same value for the gateway and every service (see .env.example)
+cd platform/backend/<name> && mvn spring-boot:run     # gateway, auth, auction, bidding, notification
 cd platform/frontend && npm install && npm run dev    # http://localhost:5173
 ```
 
-In IntelliJ, set `JWT_SECRET` in each run configuration. The Vite dev server proxies API and WebSocket paths to the gateway, so the browser sees a single origin.
+In IntelliJ, set `JWT_SECRET` in each run configuration. The Vite dev server (and nginx in the container) proxies API and WebSocket paths to the gateway, so the browser sees a single origin.
 
 ## Testing
 
