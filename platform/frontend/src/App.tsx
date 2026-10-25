@@ -12,6 +12,7 @@ import { MyAuctionsPage } from "./pages/MyAuctionsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SignInPage } from "./pages/SignInPage";
 import { SignUpPage } from "./pages/SignUpPage";
+import { WatchlistPage } from "./pages/WatchlistPage";
 import { useSession } from "./store/session";
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
           <Route element={<RequireAuth />}>
             <Route path="sell" element={<CreateAuctionPage />} />
             <Route path="mine" element={<MyAuctionsPage />} />
+            <Route path="watchlist" element={<WatchlistPage />} />
             <Route path="inbox" element={<InboxPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />

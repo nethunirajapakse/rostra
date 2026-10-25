@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
-import { useCreateAuction } from "../api/auctions";
+import { useCreateAuction, useUploadImage } from "../api/auctions";
+import { PhotoPicker } from "../components/PhotoPicker";
 import { Button, ErrorNotice, TextArea, TextField } from "../components/ui";
 import { errorText } from "../lib/api";
 import { formatDateTime, toLocalInput } from "../lib/format";
@@ -23,6 +24,9 @@ export function CreateAuctionPage() {
   useTitle("Start an auction");
   const navigate = useNavigate();
   const create = useCreateAuction();
+  const uploadImage = useUploadImage();
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [uploading, setUploading] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -57,8 +61,21 @@ export function CreateAuctionPage() {
         endsAt: end.toISOString(),
       },
       {
-        onSuccess: (auction) => {
-          toast.good(`Auction created. Bidding opens ${formatDateTime(auction.startsAt)}.`);
+        onSuccess: async (auction) => {
+          // The auction exists now. Photos go up one at a time; a failed photo must not lose the auction,
+          // and the seller can add or replace photos on the auction page.
+          let failed = 0;
+          for (let i = 0; i < photos.length; i++) {
+            setUploading(`Uploading photo ${i + 1} of ${photos.length}`);
+            try {
+              await uploadImage.mutateAsync({ auctionId: auction.id, file: photos[i] });
+            } catch {
+              failed++;
+            }
+          }
+          setUploading(null);
+          if (failed) toast.warn(`Auction created, but ${failed} photo${failed === 1 ? "" : "s"} could not be uploaded. Add them below.`);
+          else toast.good(`Auction created. Bidding opens ${formatDateTime(auction.startsAt)}.`);
           navigate(`/lot/${auction.id}`);
         },
       },
@@ -79,6 +96,8 @@ export function CreateAuctionPage() {
           onChange={(e) => setDescription(e.target.value)}
           maxLength={5000}
         />
+
+        <PhotoPicker files={photos} onChange={setPhotos} />
 
         <div className="grid gap-6 sm:grid-cols-2">
           <TextField
@@ -121,8 +140,8 @@ export function CreateAuctionPage() {
         {create.isError ? <ErrorNotice>{errorText(create.error)}</ErrorNotice> : null}
 
         <div className="flex items-center gap-3 border-t border-rule pt-6">
-          <Button type="submit" disabled={create.isPending}>
-            {create.isPending ? "Creating" : "Create auction"}
+          <Button type="submit" disabled={create.isPending || uploading !== null}>
+            {uploading ?? (create.isPending ? "Creating" : "Create auction")}
           </Button>
           <Button type="button" variant="quiet" onClick={() => navigate(-1)}>
             Cancel

@@ -24,6 +24,9 @@ export function Header() {
           </NavLink>
           {user ? (
             <>
+              <NavLink to="/watchlist" className={navLink}>
+                Watchlist
+              </NavLink>
               <NavLink to="/mine" className={navLink}>
                 My auctions
               </NavLink>

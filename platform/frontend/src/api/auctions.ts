@@ -1,6 +1,7 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../lib/api";
-import type { Auction, AuctionStatus, Bid, Page } from "../lib/types";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { api, errorText } from "../lib/api";
+import type { Auction, AuctionImage, AuctionStatus, Bid, Page } from "../lib/types";
+import { toast } from "../store/toasts";
 
 export interface AuctionFilters {
   status?: AuctionStatus;
@@ -87,5 +88,79 @@ export function usePlaceBid(auctionId: string) {
       qc.invalidateQueries({ queryKey: ["auction", auctionId] });
       qc.invalidateQueries({ queryKey: ["bids", auctionId] });
     },
+  });
+}
+
+// ---- watchlist -------------------------------------------------------------------------------------------
+
+/** The signed-in user's watched auctions, most recently added first. */
+export function useWatchlist(page: number) {
+  return useQuery({
+    queryKey: ["watchlist", page],
+    queryFn: () => api.get<Page<Auction>>(`/me/watchlist?page=${page}&size=${PAGE_SIZE}`),
+    placeholderData: keepPreviousData,
+    refetchInterval: 15_000,
+  });
+}
+
+/** Flip the "watching" flag in every cached copy of the auction, so the button reacts before the server answers. */
+function setWatching(qc: QueryClient, id: string, watching: boolean) {
+  qc.setQueryData<Auction>(["auction", id], (old) => (old ? { ...old, watching } : old));
+  for (const key of [["auctions"], ["watchlist"]]) {
+    qc.setQueriesData<Page<Auction>>({ queryKey: key }, (old) =>
+      old ? { ...old, content: old.content.map((a) => (a.id === id ? { ...a, watching } : a)) } : old,
+    );
+  }
+}
+
+export function useToggleWatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, watch }: { id: string; watch: boolean }) =>
+      watch ? api.post<unknown>(`/auctions/${id}/watch`) : api.del<unknown>(`/auctions/${id}/watch`),
+    onMutate: ({ id, watch }) => setWatching(qc, id, watch),
+    onError: (e, { id, watch }) => {
+      setWatching(qc, id, !watch);
+      toast.bad(errorText(e));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["watchlist"] }),
+  });
+}
+
+// ---- photos ----------------------------------------------------------------------------------------------
+
+function refreshAuction(qc: QueryClient, auctionId: string) {
+  qc.invalidateQueries({ queryKey: ["auction", auctionId] });
+  qc.invalidateQueries({ queryKey: ["auctions"] });
+  qc.invalidateQueries({ queryKey: ["watchlist"] });
+}
+
+/** Uploads one file. Callers send several photos one after another, which keeps each request small. */
+export function useUploadImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ auctionId, file }: { auctionId: string; file: File }) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api.upload<AuctionImage>(`/auctions/${auctionId}/images`, form);
+    },
+    onSettled: (_data, _err, { auctionId }) => refreshAuction(qc, auctionId),
+  });
+}
+
+export function useDeleteImage(auctionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (imageId: string) => api.del<void>(`/auctions/${auctionId}/images/${imageId}`),
+    onSettled: () => refreshAuction(qc, auctionId),
+  });
+}
+
+/** Send every image id in the new order; the first becomes the cover. */
+export function useReorderImages(auctionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (imageIds: string[]) => api.put<AuctionImage[]>(`/auctions/${auctionId}/images/order`, { imageIds }),
+    onSettled: () => refreshAuction(qc, auctionId),
   });
 }
