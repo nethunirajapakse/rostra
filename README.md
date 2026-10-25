@@ -8,6 +8,23 @@ Built to practise reliability patterns: not losing events when Kafka is down, no
 
 **Stack:** Java 21 · Spring Boot 3 · Spring Cloud Gateway · Kafka · PostgreSQL 16 · Redis · WebSocket · React 19 · TypeScript · Tailwind 4 · TanStack Query
 
+## Screenshots
+
+![Auction grid with live countdowns and current bids](docs/screenshots/auctions.png)
+
+<!-- Add more below once captured, for example:
+![Lot page with photo gallery and bid panel](docs/screenshots/lot.png)
+![Watchlist](docs/screenshots/watchlist.png)
+-->
+
+## Features
+
+- **Live bidding.** Bids update the price on every open page over WebSocket; losing bidders and sellers get notifications.
+- **Photos.** Sellers upload up to 5 photos per auction (JPEG, PNG or WebP, 5 MB each), reorder them and pick the cover.
+- **Watchlist.** Watch any auction and follow it from one page.
+- **Search, sort and filter** by status, keyword and price.
+- **Seller tools.** Create auctions, manage photos, and see your own listings.
+
 ## Architecture
 
 ```mermaid
@@ -57,6 +74,15 @@ Each service owns its own database (`rostra_auth`, `rostra_auction`, `rostra_bid
 
 `scripts/demo-kafka-outage.sh` stops Kafka, places bids, restarts Kafka, and shows that nothing was lost.
 
+## Photo uploads
+
+Photos go to an S3-compatible bucket (RustFS locally, any S3 service in production), but the bucket stays private: the auction service streams each image itself from `/auctions/{id}/images/{imageId}/content` with long-lived cache headers.
+
+- The file type is read from the file's magic bytes, not the filename or `Content-Type`, so a renamed file is rejected.
+- The 5-photo limit is enforced under a row lock, so concurrent uploads cannot exceed it.
+- Storage is cleaned up after the database transaction completes, so a rollback does not leave orphaned files.
+- Lists load photos and the viewer's watched ids with one batch query each, so there is no N+1.
+
 ## Running it
 
 Requires Docker with Compose (about 4 GB of free memory for the full stack).
@@ -100,13 +126,10 @@ bash scripts/demo-kafka-outage.sh   # outbox demo
 
 GitHub Actions runs `mvn verify` for every service, plus the frontend lint and build, on each push and pull request.
 
-<!-- ## Next steps
+## Known limitations
 
-- Schema comes from Hibernate `ddl-auto=update`; Flyway migrations would be the proper fix.
+- The schema comes from Hibernate `ddl-auto=update`; Flyway migrations would be the proper fix.
 - One shared HMAC secret signs all tokens; production would use asymmetric keys and mTLS.
-- WebSocket sessions are in memory, so notification-service is single-instance.
+- WebSocket sessions are in memory, so notification-service runs as a single instance.
 - No payments: winning an auction produces a notification, not a checkout.
-
-
--->
-
+- Photos are served through the auction service; at scale they would go behind a CDN.
