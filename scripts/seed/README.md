@@ -4,7 +4,7 @@
 notifications, watchlists, photos) is exactly what the app itself would produce.
 
 ```bash
-docker compose up -d --build     # the whole stack
+docker compose --profile app up -d --build   # the whole stack
 bash scripts/seed.sh
 ```
 
