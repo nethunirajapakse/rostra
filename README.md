@@ -6,7 +6,8 @@ A real-time auction platform built as event-driven microservices. Sellers list i
 
 I built it to practise reliability patterns: not losing events when Kafka is down, not processing them twice, and not selling an item to two people.
 
-![Auction grid with live countdowns and current bids](docs/screenshots/auctions.png)
+<img width="1363" height="643" alt="Screenshot 2026-10-25 162119" src="https://github.com/user-attachments/assets/d9f49b79-7743-453a-9a9e-04093b7c8b14" />
+
 
 **Stack:** Java 21, Spring Boot 3, Spring Cloud Gateway, Kafka, PostgreSQL, Redis, WebSocket, React 19, TypeScript, Tailwind 4
 
