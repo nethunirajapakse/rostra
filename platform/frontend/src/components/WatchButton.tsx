@@ -8,7 +8,7 @@ import { EyeIcon } from "./icons";
  * Add or remove an auction from the signed-in user's watchlist. Signed-out visitors are sent to sign in,
  * and sellers do not see it on their own auctions.
  */
-export function WatchButton({ auction, compact = false }: { auction: Auction; compact?: boolean }) {
+export function WatchButton({ auction, compact = false, overlay = false }: { auction: Auction; compact?: boolean; overlay?: boolean }) {
   const me = useSession((s) => s.user?.userId);
   const navigate = useNavigate();
   const toggle = useToggleWatch();
@@ -29,16 +29,18 @@ export function WatchButton({ auction, compact = false }: { auction: Auction; co
         }
         toggle.mutate({ id: auction.id, watch: !watching });
       }}
-      className={`inline-flex items-center gap-1.5 rounded-ui border text-sm font-semibold transition-colors ${
-        compact ? "px-2.5 py-2" : "px-3.5 py-2.5"
+      className={`inline-flex items-center gap-1.5 border text-sm font-bold transition-colors ${
+        overlay ? "size-9 justify-center rounded-full" : compact ? "rounded-ui px-2.5 py-2" : "rounded-ui px-3.5 py-2.5"
       } ${
         watching
-          ? "border-verdigris bg-verdigris-tint text-verdigris-deep"
-          : "border-rule bg-slab text-quiet hover:border-quiet hover:text-ink"
+          ? "border-ink bg-signal text-ink"
+          : overlay
+            ? "border-transparent bg-surface/95 text-ink hover:bg-surface"
+            : "border-rule bg-surface text-ink hover:border-ink"
       }`}
     >
       <EyeIcon filled={watching} />
-      <span className={compact ? "sr-only" : ""}>{watching ? "Watching" : "Watch"}</span>
+      <span className={compact || overlay ? "sr-only" : ""}>{watching ? "Watching" : "Watch"}</span>
     </button>
   );
 }

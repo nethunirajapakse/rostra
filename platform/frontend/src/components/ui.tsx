@@ -52,7 +52,7 @@ export function ErrorNotice({ children }: { children: ReactNode }) {
 export function Spinner({ label = "Loading" }: { label?: string }) {
   return (
     <div role="status" className="flex items-center gap-2.5 py-10 text-quiet">
-      <span className="size-4 animate-spin rounded-full border-2 border-rule border-t-verdigris" aria-hidden />
+      <span className="size-4 animate-spin rounded-full border-2 border-rule border-t-signal-deep" aria-hidden />
       <span className="text-sm">{label}</span>
     </div>
   );
@@ -60,7 +60,7 @@ export function Spinner({ label = "Loading" }: { label?: string }) {
 
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="border border-dashed border-rule bg-slab/60 px-6 py-12 text-center rounded-ui">
+    <div className="border border-dashed border-rule bg-surface/60 px-6 py-12 text-center rounded-ui">
       <p className="font-display text-2xl">{title}</p>
       {children ? <div className="mx-auto mt-2 max-w-md text-quiet">{children}</div> : null}
     </div>

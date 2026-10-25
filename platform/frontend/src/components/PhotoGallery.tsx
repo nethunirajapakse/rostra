@@ -9,7 +9,7 @@ export function PhotoGallery({ images, title }: { images: AuctionImage[]; title:
 
   return (
     <div>
-      <div className="overflow-hidden rounded-ui border border-rule bg-slab">
+      <div className="overflow-hidden rounded-ui border border-rule bg-surface">
         <img src={current.url} alt={title} className="aspect-[4/3] w-full object-contain" />
       </div>
       {images.length > 1 ? (
@@ -21,7 +21,7 @@ export function PhotoGallery({ images, title }: { images: AuctionImage[]; title:
                 onClick={() => setSelected(i)}
                 aria-label={`Show photo ${i + 1} of ${images.length}`}
                 aria-current={img === current}
-                className={`block overflow-hidden rounded-ui border-2 ${img === current ? "border-verdigris" : "border-transparent hover:border-rule"}`}
+                className={`block overflow-hidden rounded-ui border-2 ${img === current ? "border-ink" : "border-transparent hover:border-rule"}`}
               >
                 <img src={img.url} alt="" loading="lazy" className="size-16 object-cover sm:size-20" />
               </button>

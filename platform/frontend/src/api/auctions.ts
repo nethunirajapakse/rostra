@@ -7,6 +7,7 @@ export interface AuctionFilters {
   status?: AuctionStatus;
   sellerId?: string;
   search?: string;
+  sort?: string;
   page: number;
 }
 
@@ -19,7 +20,7 @@ export function useAuctions(filters: AuctionFilters) {
   if (filters.search) params.set("search", filters.search);
   // Open lots: the one closing first comes first. Everything else: newest first.
   const closingSoonFirst = filters.status === "ACTIVE" || filters.status === "SCHEDULED";
-  params.set("sort", closingSoonFirst ? "endsAt,asc" : "createdAt,desc");
+  params.set("sort", filters.sort ?? (closingSoonFirst ? "endsAt,asc" : "createdAt,desc"));
 
   return useQuery({
     queryKey: ["auctions", filters],
