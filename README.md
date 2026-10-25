@@ -10,7 +10,8 @@ Built to practise reliability patterns: not losing events when Kafka is down, no
 
 ## Screenshots
 
-![Auction grid with live countdowns and current bids](docs/screenshots/auctions.png)
+<img width="1363" height="643" alt="Screenshot 2026-10-25 162119" src="https://github.com/user-attachments/assets/d9f49b79-7743-453a-9a9e-04093b7c8b14" />
+
 
 <!-- Add more below once captured, for example:
 ![Lot page with photo gallery and bid panel](docs/screenshots/lot.png)
