@@ -27,7 +27,7 @@ export function AuctionDetailPage() {
       <div className="py-12">
         <h1 className="font-display text-4xl">That auction does not exist</h1>
         <p className="mt-3 text-quiet">The link may be wrong, or the auction was removed.</p>
-        <Link to="/" className="mt-4 inline-block font-semibold text-verdigris hover:underline">
+        <Link to="/" className="mt-4 inline-block font-semibold text-link hover:underline">
           Back to all auctions
         </Link>
       </div>
@@ -42,7 +42,7 @@ export function AuctionDetailPage() {
 
   return (
     <>
-      <Link to="/" className="text-sm font-semibold text-verdigris hover:underline">
+      <Link to="/" className="text-sm font-semibold text-link hover:underline">
         All auctions
       </Link>
       {/* DOM order is the mobile order: title, then the bidding panel, then the details. On wide screens the
@@ -53,7 +53,7 @@ export function AuctionDetailPage() {
             <StatusBadge status={a.status} />
             <WatchButton auction={a} />
           </div>
-          <h1 className="mt-3 font-display text-5xl leading-[1.05] [overflow-wrap:anywhere]">{a.title}</h1>
+          <h1 className="mt-3 font-display text-4xl leading-none [overflow-wrap:anywhere]">{a.title}</h1>
         </div>
 
         <aside className="lg:col-start-2 lg:row-span-2 lg:row-start-1">

@@ -1,42 +1,52 @@
 @import "tailwindcss";
 
+/* Auction-house vernacular: black lot tags, paddle yellow for the action, red when time is nearly up. */
 @theme {
-  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
 
-  --color-marble: #f1f2ef;
-  --color-slab: #ffffff;
-  --color-ink: #1b2430;
-  --color-quiet: #5b6674;
-  --color-rule: #d6d9d4;
-  --color-verdigris: #17756a;
-  --color-verdigris-deep: #0f5a51;
-  --color-verdigris-tint: #dcebe8;
-  --color-bronze: #94590c;
-  --color-bronze-tint: #f5e6cd;
-  --color-alert: #b3261e;
-  --color-alert-tint: #f8e0dd;
+  --color-canvas: #eceef1;
+  --color-surface: #ffffff;
+  --color-ink: #0f1115;
+  --color-quiet: #596170;
+  --color-rule: #d3d8de;
+  --color-signal: #ffc400;
+  --color-signal-deep: #e6ad00;
+  --color-signal-tint: #fff1bd;
+  --color-good: #0b7a3b;
+  --color-good-tint: #dcf2e3;
+  --color-link: #1750c4;
+  --color-warn: #8f5200;
+  --color-warn-tint: #fbe9c8;
+  --color-alert: #cf2a1c;
+  --color-alert-tint: #fbe2de;
 
-  --radius-ui: 6px;
+  --radius-ui: 4px;
 }
 
 @layer base {
   html {
-    background: var(--color-marble);
+    background: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
+  h1,
+  h2,
+  .font-display {
+    font-weight: 700;
+    letter-spacing: -0.005em;
+  }
   body {
     min-height: 100dvh;
-    background: var(--color-marble);
+    background: var(--color-canvas);
   }
   :focus-visible {
-    outline: 2px solid var(--color-verdigris);
+    outline: 3px solid var(--color-signal);
     outline-offset: 2px;
   }
   ::selection {
-    background: var(--color-verdigris-tint);
+    background: var(--color-signal-tint);
   }
   button {
     cursor: pointer;
@@ -47,13 +57,20 @@
 }
 
 @layer utilities {
+  /* Prices and lot numbers: condensed, heavy, fixed-width digits. */
+  .price {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums lining-nums;
+    letter-spacing: 0.005em;
+  }
   .figures {
     font-variant-numeric: tabular-nums lining-nums;
     font-feature-settings: "tnum" 1, "lnum" 1;
   }
 }
 
-/* The one orchestrated moment: when a bid lands, the price rolls in and the panel flashes verdigris. */
+/* The one orchestrated moment: when a bid lands, the price rolls in and the panel flashes yellow. */
 @keyframes price-roll {
   from {
     opacity: 0;
@@ -66,8 +83,8 @@
 }
 @keyframes panel-flash {
   0% {
-    box-shadow: inset 0 0 0 2px var(--color-verdigris);
-    background-color: color-mix(in srgb, var(--color-verdigris) 14%, transparent);
+    box-shadow: inset 0 0 0 2px var(--color-signal-deep);
+    background-color: color-mix(in srgb, var(--color-signal) 30%, transparent);
   }
   100% {
     box-shadow: inset 0 0 0 2px transparent;

@@ -84,10 +84,10 @@ export function CreateAuctionPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-display text-5xl leading-[1.05]">Start an auction</h1>
+      <h1 className="font-display text-4xl leading-none">Start an auction</h1>
       <p className="mt-3 text-lg text-quiet">Bidding opens and closes by itself at the times you choose.</p>
 
-      <form onSubmit={submit} noValidate className="mt-8 space-y-6 rounded-ui border border-rule bg-slab p-6 sm:p-8">
+      <form onSubmit={submit} noValidate className="mt-8 space-y-6 rounded-ui border border-rule bg-surface p-6 sm:p-8">
         <TextField label="Title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} error={errors.title} autoFocus />
         <TextArea
           label="Description"
@@ -129,7 +129,7 @@ export function CreateAuctionPage() {
                 type="button"
                 key={d.label}
                 onClick={() => setDuration(d.ms)}
-                className="rounded-full border border-rule px-3.5 py-1.5 text-sm font-medium hover:border-verdigris hover:text-verdigris-deep"
+                className="rounded-full border border-rule px-3.5 py-1.5 text-sm font-medium hover:border-ink hover:bg-signal-tint"
               >
                 {d.label}
               </button>

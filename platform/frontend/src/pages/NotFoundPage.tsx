@@ -7,7 +7,7 @@ export function NotFoundPage() {
     <div className="py-12">
       <h1 className="font-display text-5xl">That page does not exist</h1>
       <p className="mt-3 text-lg text-quiet">Check the address, or go back to the auctions.</p>
-      <Link to="/" className="mt-5 inline-block font-semibold text-verdigris hover:underline">
+      <Link to="/" className="mt-5 inline-block font-semibold text-link hover:underline">
         All auctions
       </Link>
     </div>

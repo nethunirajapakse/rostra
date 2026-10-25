@@ -52,14 +52,14 @@ export function PhotoManager({ auction }: { auction: Auction }) {
               <div className="relative">
                 <img src={img.url} alt="" className="aspect-square w-full rounded-ui border border-rule object-cover" />
                 {i === 0 ? (
-                  <span className="absolute left-1 top-1 rounded-[3px] bg-verdigris px-1.5 py-0.5 text-xs font-semibold text-white">Cover</span>
+                  <span className="absolute left-1 top-1 rounded-[3px] bg-ink px-1.5 py-0.5 text-xs font-semibold text-signal">Cover</span>
                 ) : null}
               </div>
               <div className="mt-1.5 flex flex-wrap justify-between gap-x-2 text-xs font-semibold whitespace-nowrap">
                 {i === 0 ? (
                   <span />
                 ) : (
-                  <button type="button" disabled={reorder.isPending} onClick={() => makeCover(img.id)} className="text-verdigris hover:underline">
+                  <button type="button" disabled={reorder.isPending} onClick={() => makeCover(img.id)} className="text-link hover:underline">
                     Make cover
                   </button>
                 )}
@@ -84,7 +84,7 @@ export function PhotoManager({ auction }: { auction: Auction }) {
           type="button"
           onClick={() => input.current?.click()}
           disabled={busy || images.length >= MAX_IMAGES}
-          className="inline-flex items-center gap-2 rounded-ui border border-rule bg-slab px-3.5 py-2 text-sm font-semibold hover:border-quiet disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-ui border border-rule bg-surface px-3.5 py-2 text-sm font-semibold hover:border-quiet disabled:opacity-50"
         >
           <PlusIcon /> {busy ? "Uploading" : "Add photos"}
         </button>
