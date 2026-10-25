@@ -6,8 +6,7 @@ A real-time auction platform built as event-driven microservices. Sellers list i
 
 I built it to practise reliability patterns: not losing events when Kafka is down, not processing them twice, and not selling an item to two people.
 
-<img width="1363" height="643" alt="Screenshot 2026-10-25 162119" src="https://github.com/user-attachments/assets/d9f49b79-7743-453a-9a9e-04093b7c8b14" />
-
+<img width="1363" height="643" alt="Rostra auction grid with live countdowns and current bids" src="https://github.com/user-attachments/assets/d9f49b79-7743-453a-9a9e-04093b7c8b14" />
 
 **Stack:** Java 21, Spring Boot 3, Spring Cloud Gateway, Kafka, PostgreSQL, Redis, WebSocket, React 19, TypeScript, Tailwind 4
 
@@ -21,6 +20,8 @@ bash scripts/seed.sh                         # demo users, auctions, photos and 
 ```
 
 Open **http://localhost:3000** and sign in as `demo@rostra.dev` / `Rostra@Demo1`.
+
+To see live bidding, open an auction in two browsers signed in as different demo users and place a bid in one. The price changes in the other straight away.
 
 Running the services from an IDE instead? See [Development](docs/development.md).
 
@@ -56,6 +57,26 @@ Five Spring Boot services, each with its own database. They call each other over
 | A downstream service is slow | Circuit breaker and retry |
 
 Details: [Reliability](docs/reliability.md), [Authentication](docs/authentication.md), [Photo uploads](docs/photo-uploads.md).
+
+## Project layout
+
+```
+platform/backend/    gateway, auth-service, auction-service, bidding-service, notification-service
+platform/frontend/   React app
+scripts/             db-reset, seed data, smoke tests, Kafka outage demo
+docs/                detailed write-ups
+docker-compose.yml   infrastructure and the optional full stack
+```
+
+## Tests
+
+Each service has unit and integration tests (Testcontainers, so Docker must be running), and CI runs them on every push and pull request.
+
+```bash
+cd platform/backend/<service> && mvn verify
+```
+
+More in [Development](docs/development.md).
 
 ## Documentation
 
