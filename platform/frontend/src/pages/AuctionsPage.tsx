@@ -9,14 +9,11 @@ export function AuctionsPage() {
   const signedIn = useSession((s) => s.status === "authed");
   return (
     <>
-      <div className="mb-8 max-w-xl">
-        <h1 className="font-display text-5xl leading-[1.05]">Auctions</h1>
-        <p className="mt-3 text-lg text-quiet">Place a bid and watch the price move as other people bid.</p>
-      </div>
+      <h1 className="mb-4 text-4xl leading-none">Auctions</h1>
       <AuctionList
         empty={
-          <div className="border border-dashed border-rule bg-slab/60 px-6 py-12 text-center rounded-ui">
-            <p className="font-display text-2xl">No auctions here yet</p>
+          <div className="rounded-ui border border-dashed border-rule bg-surface px-6 py-12 text-center">
+            <p className="font-display text-3xl">No auctions here yet</p>
             <p className="mx-auto mt-2 max-w-md text-quiet">Try another tab, or list the first item yourself.</p>
             <Link to={signedIn ? "/sell" : "/signup"} className={buttonClass("primary", "mt-5")}>
               {signedIn ? "Start an auction" : "Create an account to sell"}

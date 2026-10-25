@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -40,6 +42,10 @@ public interface WatchlistRepository extends JpaRepository<Watchlist, WatchlistI
     @Modifying
     @Query("delete from Watchlist w where w.id.userId = :userId and w.id.auctionId = :auctionId")
     int remove(@Param("userId") UUID userId, @Param("auctionId") UUID auctionId);
+
+    /** Which of these auctions the user watches. One query for a whole page of auctions. */
+    @Query("select w.id.auctionId from Watchlist w where w.id.userId = :userId and w.id.auctionId in :auctionIds")
+    List<UUID> findWatchedIds(@Param("userId") UUID userId, @Param("auctionIds") Collection<UUID> auctionIds);
 
     /** The auctions one user watches, most recently added first. Never returns another user's rows. */
     @Query(value = """

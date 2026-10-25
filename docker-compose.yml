@@ -1,5 +1,24 @@
 name: rostra
 
+# `docker compose up -d` starts the infrastructure only (Postgres, Redis, Kafka, RustFS), for running the services
+# from an IDE. The application containers sit behind the `app` profile; to run everything:
+#   docker compose --profile app up -d --build        then open http://localhost:3000
+
+x-service-env: &service-env
+  # Local-demo secret so the stack starts with no setup. Override it: JWT_SECRET=... docker compose up
+  JWT_SECRET: ${JWT_SECRET:-rostra-local-demo-secret-change-me-before-sharing-0123456789}
+  COOKIE_SECURE: "false"
+  DB_USERNAME: rostra
+  DB_PASSWORD: rostra_dev_pw
+  KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  REDIS_HOST: redis
+
+x-service: &service
+  profiles: ["app"]
+  restart: unless-stopped
+  networks:
+    - rostra-net
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -34,12 +53,39 @@ services:
     networks:
       - rostra-net
 
+  rustfs:
+    # S3-compatible object storage for auction photos (Apache-2.0). MinIO's free images were withdrawn in 2026.
+    # Console: http://localhost:9001/rustfs/console/  (access key rostra-dev-key, secret rostra-dev-secret-0123)
+    image: rustfs/rustfs:1.0.0
+    container_name: rostra-rustfs
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: rostra-dev-key
+      RUSTFS_SECRET_KEY: rostra-dev-secret-0123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfs_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - rostra-net
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: rostra-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_HEAP_OPTS: "-Xms128m -Xmx256m"
     networks:
       - rostra-net
 
@@ -60,6 +106,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
       interval: 10s
@@ -71,6 +118,7 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: rostra-kafka-ui
+    profiles: ["tools"]   # docker compose --profile tools up -d kafka-ui  ->  http://localhost:8090
     depends_on:
       - kafka
     ports:
@@ -81,8 +129,124 @@ services:
     networks:
       - rostra-net
 
+  # ---- application ----
+
+  auth-service:
+    <<: *service
+    build: ./platform/backend/auth-service
+    container_name: rostra-auth
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      <<: *service-env
+      DB_URL: jdbc:postgresql://postgres:5432/rostra_auth
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S -q -O /dev/null http://localhost:8081/ 2>&1 | grep -q HTTP/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+
+  auction-service:
+    <<: *service
+    build: ./platform/backend/auction-service
+    container_name: rostra-auction
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      rustfs: { condition: service_healthy }
+    environment:
+      <<: *service-env
+      DB_URL: jdbc:postgresql://postgres:5432/rostra_auction
+      MEDIA_ENDPOINT: http://rustfs:9000
+      MEDIA_ACCESS_KEY: rostra-dev-key
+      MEDIA_SECRET_KEY: rostra-dev-secret-0123
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S -q -O /dev/null http://localhost:8082/ 2>&1 | grep -q HTTP/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+
+  bidding-service:
+    <<: *service
+    build: ./platform/backend/bidding-service
+    container_name: rostra-bidding
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      auction-service: { condition: service_healthy }
+    environment:
+      <<: *service-env
+      DB_URL: jdbc:postgresql://postgres:5432/rostra_bidding
+      AUCTION_SERVICE_URL: http://auction-service:8082
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S -q -O /dev/null http://localhost:8083/ 2>&1 | grep -q HTTP/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+
+  notification-service:
+    <<: *service
+    build: ./platform/backend/notification-service
+    container_name: rostra-notification
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    environment:
+      <<: *service-env
+      NOTIFICATION_DB_URL: jdbc:postgresql://postgres:5432/rostra_notification
+      NOTIFICATION_DB_USERNAME: rostra
+      NOTIFICATION_DB_PASSWORD: rostra_dev_pw
+      # Browsers open the WebSocket from the web app's origin.
+      APP_WS_ALLOWED_ORIGINS: ${FRONTEND_ORIGIN:-http://localhost:3000}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S -q -O /dev/null http://localhost:8084/ 2>&1 | grep -q HTTP/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+
+  gateway:
+    <<: *service
+    build: ./platform/backend/gateway
+    container_name: rostra-gateway
+    depends_on:
+      redis: { condition: service_healthy }
+      auth-service: { condition: service_healthy }
+      auction-service: { condition: service_healthy }
+      bidding-service: { condition: service_healthy }
+      notification-service: { condition: service_healthy }
+    ports:
+      - "8080:8080"   # the API, for curl and the scripts in scripts/
+    environment:
+      <<: *service-env
+      AUTH_SERVICE_URL: http://auth-service:8081
+      AUCTION_SERVICE_URL: http://auction-service:8082
+      BIDDING_SERVICE_URL: http://bidding-service:8083
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
+      NOTIFICATION_WS_URL: ws://notification-service:8084
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S -q -O /dev/null http://localhost:8080/ 2>&1 | grep -q HTTP/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  frontend:
+    <<: *service
+    build: ./platform/frontend
+    container_name: rostra-frontend
+    depends_on:
+      gateway: { condition: service_healthy }
+    ports:
+      - "3000:80"     # http://localhost:3000
+
 volumes:
   postgres_data:
+  rustfs_data:
 
 networks:
   rostra-net:

@@ -3,8 +3,8 @@ import { useToasts, type ToastTone } from "../store/toasts";
 
 const BAR: Record<ToastTone, string> = {
   info: "bg-quiet",
-  good: "bg-verdigris",
-  warn: "bg-bronze",
+  good: "bg-good",
+  warn: "bg-warn",
   bad: "bg-alert",
 };
 
@@ -21,13 +21,13 @@ export function Toaster() {
         <div
           key={t.id}
           role="status"
-          className="toast-in pointer-events-auto flex w-full max-w-sm overflow-hidden rounded-ui border border-rule bg-slab"
+          className="toast-in pointer-events-auto flex w-full max-w-sm overflow-hidden rounded-ui border border-rule bg-surface"
         >
           <span className={`w-1.5 shrink-0 ${BAR[t.tone]}`} aria-hidden />
           <div className="flex-1 px-3.5 py-3 text-sm">
             <p>{t.text}</p>
             {t.to && t.to !== here ? (
-              <Link to={t.to} onClick={() => dismiss(t.id)} className="mt-1 inline-block font-semibold text-verdigris hover:underline">
+              <Link to={t.to} onClick={() => dismiss(t.id)} className="mt-1 inline-block font-semibold text-link hover:underline">
                 View auction
               </Link>
             ) : null}

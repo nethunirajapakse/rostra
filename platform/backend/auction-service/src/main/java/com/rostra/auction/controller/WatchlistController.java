@@ -2,6 +2,7 @@ package com.rostra.auction.controller;
 
 import com.rostra.auction.dto.AuctionResponseDTO;
 import com.rostra.auction.dto.WatchResponseDTO;
+import com.rostra.auction.service.AuctionAssembler;
 import com.rostra.auction.service.WatchlistService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,9 +25,11 @@ import java.util.UUID;
 public class WatchlistController {
 
     private final WatchlistService watchlistService;
+    private final AuctionAssembler assembler;
 
-    public WatchlistController(WatchlistService watchlistService) {
+    public WatchlistController(WatchlistService watchlistService, AuctionAssembler assembler) {
         this.watchlistService = watchlistService;
+        this.assembler = assembler;
     }
 
     @PostMapping("/auctions/{id}/watch")
@@ -47,6 +50,6 @@ public class WatchlistController {
             @AuthenticationPrincipal UUID userId,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        return watchlistService.listWatched(userId, pageable).map(AuctionResponseDTO::from);
+        return assembler.toPage(watchlistService.listWatched(userId, pageable), userId);
     }
 }

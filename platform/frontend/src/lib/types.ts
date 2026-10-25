@@ -6,6 +6,13 @@ export interface User {
   email: string;
 }
 
+export interface AuctionImage {
+  id: string;
+  /** Relative to this site: /auctions/{auctionId}/images/{imageId}/content */
+  url: string;
+  position: number;
+}
+
 export interface Auction {
   id: string;
   sellerId: string;
@@ -22,6 +29,11 @@ export interface Auction {
   status: AuctionStatus;
   createdAt: string;
   version: number;
+  /** The first photo, or null when there are none. */
+  coverUrl: string | null;
+  images: AuctionImage[];
+  /** Whether the signed-in user watches this auction. */
+  watching: boolean;
 }
 
 export interface Bid {

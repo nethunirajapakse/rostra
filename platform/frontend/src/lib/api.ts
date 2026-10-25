@@ -59,7 +59,9 @@ const NO_REFRESH = new Set(["/auth/signin", "/auth/signup", "/auth/refresh"]);
 
 async function request<T>(method: string, path: string, body?: unknown, canRefresh = true): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  // A FormData body (file upload) sets its own multipart Content-Type, boundary included.
+  const isForm = body instanceof FormData;
+  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
   if (method !== "GET") {
     const token = xsrfToken();
     if (token) headers["X-XSRF-TOKEN"] = token;
@@ -68,7 +70,7 @@ async function request<T>(method: string, path: string, body?: unknown, canRefre
   const res = await fetch(path, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     credentials: "same-origin",
   });
 
@@ -89,7 +91,9 @@ async function request<T>(method: string, path: string, body?: unknown, canRefre
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}),
+  put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body ?? {}),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body ?? {}),
+  upload: <T>(path: string, form: FormData) => request<T>("POST", path, form),
   del: <T>(path: string) => request<T>("DELETE", path),
 };
 
