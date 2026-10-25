@@ -6,6 +6,7 @@ import com.rostra.auction.dto.UpdateAuctionRequestDTO;
 import com.rostra.auction.dto.UpdateCurrentPriceRequestDTO;
 import com.rostra.auction.entity.Auction;
 import com.rostra.auction.repository.AuctionSearchCriteria;
+import com.rostra.auction.service.AuctionAssembler;
 import com.rostra.auction.service.AuctionService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -24,9 +25,11 @@ import java.util.UUID;
 public class AuctionController {
 
     private final AuctionService auctionService;
+    private final AuctionAssembler assembler;
 
-    public AuctionController(AuctionService auctionService) {
+    public AuctionController(AuctionService auctionService, AuctionAssembler assembler) {
         this.auctionService = auctionService;
+        this.assembler = assembler;
     }
 
     @PostMapping
@@ -35,24 +38,25 @@ public class AuctionController {
             @Valid @RequestBody CreateAuctionRequestDTO req
     ) {
         Auction created = auctionService.create(sellerId, req);
-        AuctionResponseDTO body = AuctionResponseDTO.from(created);
+        AuctionResponseDTO body = assembler.toDto(created, sellerId);
         return ResponseEntity
                 .created(URI.create("/auctions/" + created.getId()))
                 .body(body);
     }
 
     @GetMapping("/{id}")
-    public AuctionResponseDTO getById(@PathVariable UUID id) {
+    public AuctionResponseDTO getById(@PathVariable UUID id, @AuthenticationPrincipal UUID viewerId) {
         Auction auction = auctionService.findById(id);
-        return AuctionResponseDTO.from(auction);
+        return assembler.toDto(auction, viewerId);
     }
 
     @GetMapping
     public Page<AuctionResponseDTO> list(
             AuctionSearchCriteria criteria,
+            @AuthenticationPrincipal UUID viewerId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return auctionService.search(criteria, pageable).map(AuctionResponseDTO::from);
+        return assembler.toPage(auctionService.search(criteria, pageable), viewerId);
     }
 
     @PatchMapping("/{id}")
@@ -62,7 +66,7 @@ public class AuctionController {
             @Valid @RequestBody UpdateAuctionRequestDTO req
     ) {
         Auction updated = auctionService.update(userId, id, req);
-        return AuctionResponseDTO.from(updated);
+        return assembler.toDto(updated, userId);
     }
 
     @DeleteMapping("/{id}")
@@ -71,7 +75,7 @@ public class AuctionController {
             @AuthenticationPrincipal UUID userId
     ) {
         Auction cancelled = auctionService.cancel(userId, id);
-        return AuctionResponseDTO.from(cancelled);
+        return assembler.toDto(cancelled, userId);
     }
 
     @PatchMapping("/{id}/current-price")
@@ -80,6 +84,6 @@ public class AuctionController {
             @Valid @RequestBody UpdateCurrentPriceRequestDTO req
     ) {
         Auction updated = auctionService.updateCurrentPrice(id, req.newPrice(), req.expectedVersion(), req.bidderId());
-        return AuctionResponseDTO.from(updated);
+        return assembler.toDto(updated);
     }
 }

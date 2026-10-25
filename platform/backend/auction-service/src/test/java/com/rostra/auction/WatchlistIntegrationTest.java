@@ -171,4 +171,22 @@ class WatchlistIntegrationTest extends PostgresIntegrationTest {
         mvc.perform(delete("/auctions/{id}/watch", UUID.randomUUID()).cookie(TestTokens.accessCookie(alice)))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void auctionResponsesTellEachCallerWhetherTheyWatchIt() throws Exception {
+        UUID id = auction("Flagged");
+        watch(alice, id);
+
+        mvc.perform(get("/auctions/{id}", id).cookie(TestTokens.accessCookie(alice)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.watching").value(true));
+        mvc.perform(get("/auctions/{id}", id).cookie(TestTokens.accessCookie(bob)))
+                .andExpect(jsonPath("$.watching").value(false));
+        mvc.perform(get("/auctions/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.watching").value(false));
+
+        mvc.perform(get("/auctions").param("size", "100").cookie(TestTokens.accessCookie(alice)))
+                .andExpect(jsonPath("$.content[?(@.id=='" + id + "')].watching").value(true));
+    }
 }
