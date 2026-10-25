@@ -32,7 +32,7 @@ export function SignUpPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to={`/signin${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`} className="font-semibold text-verdigris hover:underline">
+          <Link to={`/signin${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`} className="font-semibold text-link hover:underline">
             Sign in
           </Link>
         </>

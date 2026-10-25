@@ -2,6 +2,9 @@ import { Link, useParams } from "react-router";
 import { useAuction, useBids } from "../api/auctions";
 import { BidHistory } from "../components/BidHistory";
 import { BidPanel } from "../components/BidPanel";
+import { PhotoGallery } from "../components/PhotoGallery";
+import { PhotoManager } from "../components/PhotoManager";
+import { WatchButton } from "../components/WatchButton";
 import { StatusBadge } from "../components/StatusBadge";
 import { ErrorNotice, Spinner } from "../components/ui";
 import { ApiError, errorText } from "../lib/api";
@@ -24,7 +27,7 @@ export function AuctionDetailPage() {
       <div className="py-12">
         <h1 className="font-display text-4xl">That auction does not exist</h1>
         <p className="mt-3 text-quiet">The link may be wrong, or the auction was removed.</p>
-        <Link to="/" className="mt-4 inline-block font-semibold text-verdigris hover:underline">
+        <Link to="/" className="mt-4 inline-block font-semibold text-link hover:underline">
           Back to all auctions
         </Link>
       </div>
@@ -39,15 +42,18 @@ export function AuctionDetailPage() {
 
   return (
     <>
-      <Link to="/" className="text-sm font-semibold text-verdigris hover:underline">
+      <Link to="/" className="text-sm font-semibold text-link hover:underline">
         All auctions
       </Link>
       {/* DOM order is the mobile order: title, then the bidding panel, then the details. On wide screens the
           panel moves to its own column beside both. */}
       <div className="mt-4 grid gap-x-10 gap-y-8 lg:grid-cols-[1fr_22rem]">
         <div className="min-w-0 lg:col-start-1">
-          <StatusBadge status={a.status} />
-          <h1 className="mt-3 font-display text-5xl leading-[1.05] [overflow-wrap:anywhere]">{a.title}</h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <StatusBadge status={a.status} />
+            <WatchButton auction={a} />
+          </div>
+          <h1 className="mt-3 font-display text-4xl leading-none [overflow-wrap:anywhere]">{a.title}</h1>
         </div>
 
         <aside className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -55,6 +61,11 @@ export function AuctionDetailPage() {
         </aside>
 
         <div className="min-w-0 lg:col-start-1">
+          {a.images.length > 0 ? (
+            <div className="mb-8">
+              <PhotoGallery images={a.images} title={a.title} />
+            </div>
+          ) : null}
           {a.description ? <p className="max-w-prose whitespace-pre-line text-lg leading-relaxed">{a.description}</p> : null}
 
           <dl className="figures mt-8 grid max-w-prose grid-cols-2 gap-x-8 gap-y-5 border-t border-rule pt-6 text-sm sm:grid-cols-3">
@@ -79,6 +90,10 @@ export function AuctionDetailPage() {
               <dd className="mt-0.5 font-medium">{formatDateTime(a.endsAt)}</dd>
             </div>
           </dl>
+
+          {a.sellerId === me && (a.status === "SCHEDULED" || a.status === "ACTIVE" || a.status === "DRAFT") ? (
+            <PhotoManager auction={a} />
+          ) : null}
 
           <h2 className="mb-3 mt-10 text-xl font-semibold">Bids</h2>
           {bids.isPending ? (

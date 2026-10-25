@@ -1,0 +1,32 @@
+# key | seller | title | description | starting price | min increment | starts in | ends in
+#
+# "starts in" and "ends in" are counted from the moment the script creates the auction.
+# Durations: 90s, 45m, 6h, 2d, or combined like 2d6h. The server requires both to be in the future.
+# Do not use the characters | " or \ inside a title or description.
+#
+# Two kinds of short-lived auction on purpose:
+#   - "ended" ones start almost at once and finish about two minutes later, so the list has finished
+#     auctions (one with no bids at all) and the demo user has a "you won" notification.
+#   - "upcoming" ones start days from now, so the Upcoming tab is not empty.
+
+# ---- ended soon after seeding (bids for these are placed first, see bids.txt) ----
+polaroid|diego|Polaroid OneStep 600 instant camera|Works and tested with fresh film. Light leaks on one corner of the flash housing, otherwise clean. Comes with the original strap.|40.00|5.00|12s|140s
+flyrod|kasun|Bamboo fly rod, 8 ft, two piece|Split-cane rod in a cloth tube, with restored ferrules and new silk wraps. Smooth action, suited to light trout lines.|90.00|10.00|12s|140s
+chess|mira|Walnut and boxwood chess set|Hand-turned weighted pieces with a 50 mm king and a folding board that doubles as the storage box. No chips or repairs.|75.00|5.00|12s|140s
+
+# ---- live ----
+camera|mira|Leica M6 rangefinder with 50mm Summicron|Classic 35mm film rangefinder in good working order. The meter reads accurately, shutter speeds are even and the viewfinder is clean. Includes the 50mm f/2 Summicron, caps and a leather strap.|1200.00|25.00|15s|2d6h
+watch|omar|Seiko 5 automatic, 1970s|Keeps good time, winds and hand-sets smoothly. Original dial and hands, replacement crystal, new leather strap. Light wear on the case back.|180.00|5.00|15s|18h
+keyboard|lena|Keychron Q1 mechanical keyboard|Aluminium body, hot-swappable switches, lubed stabilizers. Tactile switches installed, original linear set included. Barely used, boxed.|95.00|5.00|15s|3d
+teaset|kasun|Vintage Noritake tea set, 21 pieces|Cream and gold floral pattern. Six cups and saucers, six side plates, teapot, milk jug and sugar bowl. No chips, gilding intact.|60.00|5.00|15s|5h30m
+mat|priya|Handwoven Dumbara wall hanging|Traditional Dumbara weave in natural dyes, about 90 by 60 cm. Made by a family workshop in the Knuckles range. Ready to hang.|45.00|5.00|15s|4d
+bike|diego|Restored 1968 Raleigh roadster|Three-speed Sturmey-Archer hub, rod brakes, new tyres and cables. Frame repainted in the original dark green. Rides straight and quiet.|320.00|10.00|15s|1d12h
+vinyl|hannah|Jazz vinyl collection, 12 LPs|Twelve LPs from the 1960s and 70s: hard bop, modal and a few soul-jazz classics. Sleeves show shelf wear, records play clean.|150.00|10.00|15s|2d
+guitar|demo|Yamaha FG800 acoustic guitar|Solid spruce top, nato back and sides. Fresh strings and a recent setup, with a padded gig bag. Small mark on the lower bout.|140.00|5.00|15s|6d
+lamp|demo|Mid-century brass desk lamp|Adjustable arm, heavy base, new cloth cord and plug. Warm patina, works with a standard E27 bulb.|55.00|5.00|15s|9h
+canon|lena|Canon AE-1 Program with 50mm f/1.8|Shutter and meter work, light seals replaced, clean glass with no fungus. Includes a new battery and a camera strap.|85.00|5.00|15s|45m
+
+# ---- upcoming ----
+risograph|priya|Signed risograph print set, edition of 30|Four A3 prints in fluorescent orange and teal on uncoated stock. Signed and numbered, shipped flat in a card portfolio.|70.00|5.00|1d|4d
+typewriter|omar|Olympia SM9 portable typewriter|Serviced and cleaned, with a fresh ribbon. Even typing, working tab and margin stops. Comes with its hard case.|210.00|10.00|2d|6d
+dutchoven|hannah|Enamelled cast-iron Dutch oven, 5.5 qt|Deep red enamel with a few small chips on the rim, interior in very good condition. Heavy lid with a stainless knob.|55.00|5.00|3d|7d

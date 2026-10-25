@@ -22,7 +22,7 @@ export function BidPanel({ auction: a, bids }: { auction: Auction; bids: Bid[] }
   const iBid = me ? bids.some((b) => b.bidderId === me) : false;
 
   return (
-    <section aria-label="Bidding" className="relative overflow-hidden rounded-ui border border-rule bg-slab lg:sticky lg:top-6">
+    <section aria-label="Bidding" className="relative overflow-hidden rounded-ui border border-rule bg-surface lg:sticky lg:top-6">
       {/* Replays on every price change: the panel flashes without touching what is being typed. It sits
           behind the content, which is positioned so it paints above it. */}
       {nonce > 0 ? <span key={nonce} className="panel-flash pointer-events-none absolute inset-0" aria-hidden /> : null}
@@ -31,16 +31,16 @@ export function BidPanel({ auction: a, bids }: { auction: Auction; bids: Bid[] }
       {a.status === "ACTIVE" ? (
         <>
           <p className="text-sm text-quiet">{bids.length > 0 ? "Highest bid" : "Starting price"}</p>
-          <LivePrice value={a.currentPrice} className="text-5xl font-semibold leading-tight" />
+          <LivePrice value={a.currentPrice} className="price text-6xl leading-none" />
           <p className="mt-2 text-sm text-quiet">
             Closes in <Countdown to={a.endsAt} className="font-semibold text-ink" />
           </p>
           {me && !isSeller ? (
             <>
               {leaderId === me ? (
-                <p className="mt-4 rounded-ui bg-verdigris-tint px-3.5 py-2.5 text-sm font-semibold text-verdigris-deep">You have the highest bid.</p>
+                <p className="mt-4 rounded-ui bg-good-tint px-3.5 py-2.5 text-sm font-semibold text-good">You have the highest bid.</p>
               ) : iBid ? (
-                <p className="mt-4 rounded-ui bg-bronze-tint px-3.5 py-2.5 text-sm font-semibold text-bronze">You were outbid. Bid again to take the lead.</p>
+                <p className="mt-4 rounded-ui bg-warn-tint px-3.5 py-2.5 text-sm font-semibold text-warn">You were outbid. Bid again to take the lead.</p>
               ) : null}
               <BidForm auction={a} />
             </>
@@ -53,7 +53,7 @@ export function BidPanel({ auction: a, bids }: { auction: Auction; bids: Bid[] }
       ) : a.status === "SCHEDULED" ? (
         <>
           <p className="text-sm text-quiet">Starting price</p>
-          <p className="figures text-5xl font-semibold leading-tight">{formatMoney(a.startingPrice)}</p>
+          <p className="figures price text-6xl leading-none">{formatMoney(a.startingPrice)}</p>
           <p className="mt-2 text-sm text-quiet">
             Opens in <Countdown to={a.startsAt} urgent={false} className="font-semibold text-ink" />
           </p>
@@ -86,8 +86,8 @@ function Result({ auction: a }: { auction: Auction }) {
   return (
     <>
       <p className="text-sm text-quiet">Sold for</p>
-      <p className="figures text-5xl font-semibold leading-tight">{formatMoney(a.finalPrice)}</p>
-      <p className={`mt-4 rounded-ui px-3.5 py-2.5 text-sm font-semibold ${me === a.winnerId ? "bg-verdigris-tint text-verdigris-deep" : "bg-marble text-ink"}`}>
+      <p className="figures price text-6xl leading-none">{formatMoney(a.finalPrice)}</p>
+      <p className={`mt-4 rounded-ui px-3.5 py-2.5 text-sm font-semibold ${me === a.winnerId ? "bg-good-tint text-good" : "bg-canvas text-ink"}`}>
         {me === a.winnerId ? "You won this auction." : me === a.sellerId ? `Won by bidder ${shortId(a.winnerId)}.` : `Won by bidder ${shortId(a.winnerId)}. Better luck next time.`}
       </p>
       <p className="mt-3 text-sm text-quiet">Closed {formatDateTime(a.endsAt)}</p>
@@ -164,7 +164,7 @@ function BidForm({ auction: a }: { auction: Auction }) {
       <label htmlFor="bid-amount" className="mb-1.5 block text-sm font-medium">
         Your bid
       </label>
-      <div className="flex items-stretch rounded-ui border border-rule bg-slab focus-within:border-verdigris">
+      <div className="flex items-stretch rounded-ui border border-rule bg-surface focus-within:border-ink">
         <span className="flex items-center pl-3 text-quiet" aria-hidden>
           $
         </span>
@@ -188,7 +188,7 @@ function BidForm({ auction: a }: { auction: Auction }) {
             type="button"
             key={q}
             onClick={() => setRaw(q.toFixed(2))}
-            className="figures rounded-full border border-rule px-3 py-1 text-sm font-medium hover:border-verdigris hover:text-verdigris-deep"
+            className="figures rounded-full border border-rule px-3 py-1 text-sm font-medium hover:border-ink hover:bg-signal-tint"
           >
             {formatMoney(q)}
           </button>

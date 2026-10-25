@@ -1,0 +1,10 @@
+# key | first name | last name | email
+# Every account gets the same password (see SEED_PASSWORD in seed.sh). "demo" is the account to log in with.
+demo|Demo|User|demo@rostra.dev
+mira|Mira|Fernando|mira.fernando@example.com
+omar|Omar|Haddad|omar.haddad@example.com
+lena|Lena|Fischer|lena.fischer@example.com
+kasun|Kasun|Perera|kasun.perera@example.com
+priya|Priya|Nair|priya.nair@example.com
+diego|Diego|Alvarez|diego.alvarez@example.com
+hannah|Hannah|Cole|hannah.cole@example.com

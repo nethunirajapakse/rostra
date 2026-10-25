@@ -1,0 +1,18 @@
+# user | auction
+demo|camera
+demo|bike
+demo|vinyl
+demo|mat
+demo|typewriter
+demo|risograph
+mira|guitar
+mira|keyboard
+omar|camera
+omar|dutchoven
+lena|watch
+lena|bike
+kasun|camera
+kasun|risograph
+priya|typewriter
+diego|guitar
+hannah|camera

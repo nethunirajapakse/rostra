@@ -12,25 +12,30 @@ spring:
         webflux:
           routes:
             - id: auth-service
-              uri: http://localhost:8081
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:
                 - Path=/auth/**
             - id: auction-service
-              uri: http://localhost:8082
+              uri: ${AUCTION_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/auctions/**
             - id: bidding-service
-              uri: http://localhost:8083
+              uri: ${BIDDING_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/bids/**
             - id: notification-service
-              uri: http://localhost:8084
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
               predicates:
                 - Path=/me/notifications/**
+            # The signed-in user's watchlist lives in auction-service (the other watch endpoints sit under /auctions).
+            - id: auction-watchlist
+              uri: ${AUCTION_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/me/watchlist/**
             # Live notifications. ws:// makes the gateway proxy the WebSocket upgrade; the cookie is validated
             # by JwtEdgeFilter exactly like a normal request, then notification-service authenticates it again.
             - id: notification-ws
-              uri: ws://localhost:8084
+              uri: ${NOTIFICATION_WS_URL:ws://localhost:8084}
               predicates:
                 - Path=/ws/notifications
           globalcors:

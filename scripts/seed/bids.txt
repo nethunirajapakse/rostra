@@ -1,0 +1,44 @@
+# auction | bidder | amount
+#
+# Placed top to bottom through POST /bids, so each amount must beat the previous one by at least the
+# auction's minimum increment, and a seller cannot bid on their own auction. The short auctions come first
+# because they end about two minutes after the script starts.
+
+# ---- auctions that end soon ----
+polaroid|lena|45.00
+polaroid|kasun|50.00
+polaroid|lena|60.00
+flyrod|demo|100.00
+flyrod|hannah|110.00
+flyrod|demo|120.00
+
+# ---- live auctions ----
+camera|omar|1225.00
+camera|lena|1250.00
+camera|kasun|1300.00
+camera|omar|1350.00
+camera|lena|1400.00
+watch|demo|185.00
+watch|diego|190.00
+watch|demo|200.00
+watch|hannah|215.00
+keyboard|kasun|100.00
+keyboard|priya|110.00
+keyboard|kasun|120.00
+teaset|demo|65.00
+teaset|lena|70.00
+teaset|demo|80.00
+bike|mira|330.00
+bike|omar|350.00
+bike|priya|360.00
+vinyl|kasun|160.00
+vinyl|diego|170.00
+guitar|omar|145.00
+guitar|mira|150.00
+guitar|hannah|160.00
+guitar|omar|170.00
+lamp|kasun|60.00
+canon|demo|90.00
+canon|omar|95.00
+canon|demo|105.00
+canon|priya|110.00

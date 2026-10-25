@@ -5,6 +5,7 @@ import com.rostra.auction.entity.AuctionStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record AuctionResponseDTO(
@@ -21,9 +22,14 @@ public record AuctionResponseDTO(
         Instant endsAt,
         AuctionStatus status,
         Instant createdAt,
-        Long version
+        Long version,
+        String coverUrl,
+        List<AuctionImageDTO> images,
+        /** Whether the signed-in caller watches this auction. Always false for anonymous callers. */
+        boolean watching
 ) {
-    public static AuctionResponseDTO from(Auction a) {
+    /** {@code images} must already be in display order; the first one is the cover. */
+    public static AuctionResponseDTO from(Auction a, List<AuctionImageDTO> images, boolean watching) {
         return new AuctionResponseDTO(
                 a.getId(),
                 a.getSellerId(),
@@ -38,7 +44,10 @@ public record AuctionResponseDTO(
                 a.getEndsAt(),
                 a.getStatus(),
                 a.getCreatedAt(),
-                a.getVersion()
+                a.getVersion(),
+                images.isEmpty() ? null : images.get(0).url(),
+                images,
+                watching
         );
     }
 }
